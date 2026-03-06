@@ -2,7 +2,7 @@
 报告生成器 - 支持终端表格、Markdown、HTML 输出
 HTML 报告支持:
   - 一级分类颜色区分
-  - 区域分组展示（东南亚/亚太/中东/欧洲/北美/南美/日韩台/其他）
+  - 区域分组展示（东南亚/东亚/南亚/大洋洲/中东/欧洲/北美/南美/其他）
   - 时间列展示立法动态发布时间
   - Bilibili Legal 品牌标识
 """
@@ -69,11 +69,11 @@ _TEXT_GROUP_PATTERNS = [
                r'|canada|canadian|pipeda\b'
                r'|ccpa\b|cpra\b|coppa\b|kids act)\b'
                r'|美国|加拿大|纽约|加利福尼亚|德克萨斯'),
-    # 亚太：原南亚 + 大洋洲合并
-    ("亚太",   r'(?i)\b(india[n]?|dpdpa\b|meity\b|vaishnaw|pakistan|bangladesh'
-               r'|australia[n]?|new zealand|esafety\b|accc\b)\b'
-               r'|印度|巴基斯坦|孟加拉|澳大利亚|新西兰'),
-    ("日韩台", r'(?i)\b(japan[ese]?|korea[n]?|south korea|grac\b|kca\b|cero\b'
+    # 南亚/大洋洲（原亚太，重命名消歧义）
+    ("南亚/大洋洲", r'(?i)\b(india[n]?|dpdpa\b|meity\b|vaishnaw|pakistan|bangladesh'
+                   r'|australia[n]?|new zealand|esafety\b|accc\b)\b'
+                   r'|印度|巴基斯坦|孟加拉|澳大利亚|新西兰'),
+    ("东亚",   r'(?i)\b(japan[ese]?|korea[n]?|south korea|grac\b|kca\b|cero\b'
                r'|nintendo\b)\b'
                r'|台湾|韓[国國]?|日本|韩国|ゲーム|게임|확률형'),
     ("东南亚", r'(?i)\b(vietnam[ese]?|việt|indonesi[a]?[n]?|kominfo\b|igac\b'
@@ -795,7 +795,7 @@ td {{ padding: 9px 12px; font-size: 12px; vertical-align: top; }}
     font-size: 11px;
 }}
 .td-cat {{ white-space: nowrap; }}
-.td-title {{ min-width: 200px; max-width: 340px; line-height: 1.55; }}
+.td-title {{ line-height: 1.55; word-break: break-word; }}
 .td-title-zh {{
     display: block;
     font-weight: 600;
@@ -826,7 +826,7 @@ td {{ padding: 9px 12px; font-size: 12px; vertical-align: top; }}
     font-weight: 500;
 }}
 .td-status {{ white-space: nowrap; }}
-.td-summary {{ max-width: 320px; color: #636366; line-height: 1.55; font-size: 11px; }}
+.td-summary {{ color: #636366; line-height: 1.65; font-size: 11.5px; word-break: break-word; }}
 
 /* ── 标签 badges ── */
 .cat-badge {{
@@ -1007,6 +1007,14 @@ td {{ padding: 9px 12px; font-size: 12px; vertical-align: top; }}
   <!-- 表格 -->
   <div class="table-wrap">
     <table id="mainTable">
+      <colgroup>
+        <col style="width:6%">
+        <col style="width:9%">
+        <col style="width:16%">
+        <col style="width:6%">
+        <col style="width:7%">
+        <col style="width:56%">
+      </colgroup>
       <thead>
         <tr>
           <th onclick="sortTable(0)">区域 <span class="sort-icon">⇅</span></th>
@@ -1014,7 +1022,7 @@ td {{ padding: 9px 12px; font-size: 12px; vertical-align: top; }}
           <th onclick="sortTable(2)">标题 <span class="sort-icon">⇅</span></th>
           <th onclick="sortTable(3)">发布时间 <span class="sort-icon">⇅</span></th>
           <th onclick="sortTable(4)">标签 <span class="sort-icon">⇅</span></th>
-          <th>摘要(中文)</th>
+          <th>摘要 &amp; 合规提示</th>
         </tr>
       </thead>
       <tbody>{rows_html}
@@ -1043,7 +1051,7 @@ td {{ padding: 9px 12px; font-size: 12px; vertical-align: top; }}
   }});
 
   // 按预设顺序填充地区下拉
-  const groupOrder = ["东南亚","亚太","中东","欧洲","北美","南美","日韩台","其他"];
+  const groupOrder = ["东南亚","东亚","南亚/大洋洲","中东","欧洲","北美","南美","其他"];
   const fGroup = document.getElementById('fGroup');
   groupOrder.forEach(g => {{
     if (groups.has(g)) {{
@@ -1123,7 +1131,7 @@ function sortTable(col) {{
 
   // 把分组 header、主行、对应展开行重新排列
   const groupRows = [...tbody.querySelectorAll('.group-row')];
-  const groupOrder = ["东南亚","亚太","中东","欧洲","北美","南美","日韩台","其他"];
+  const groupOrder = ["东南亚","东亚","南亚/大洋洲","中东","欧洲","北美","南美","其他"];
   tbody.innerHTML = '';
 
   groupOrder.forEach(grp => {{

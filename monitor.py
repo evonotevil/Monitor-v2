@@ -372,6 +372,80 @@ def _split_main_appendix(items: list) -> tuple:
     return main, appendix
 
 
+def _deep_cluster_timeline(items: list) -> list:
+    """
+    深度聚类（第三层）：将同一地区、同一法案但不同进展阶段的条目合并为时间线综述。
+
+    与 _deduplicate_report_items 的区别：
+      - 无日期窗口限制（捕捉月报内"草案 → 生效 → 执法"等全周期进展）
+      - 要求状态不同（同状态已由第二层处理）
+      - 使用精确指纹规则而非 bigram，避免宽泛合并
+
+    合并结果：保留 impact_score 最高的条目为代表，在摘要末尾追加
+    "【进展时间线】草案 2026-01 → 已生效 2026-02" 格式的时间线注释。
+    """
+    dropped: set[int] = set()
+    fps = [_event_fingerprint(item.get("title", "")) for item in items]
+
+    for i, item_i in enumerate(items):
+        if i in dropped:
+            continue
+        group_i = _get_region_group(item_i.get("region", ""))
+        status_i = item_i.get("status", "")
+
+        same_law = []   # (j, item_j) 同法案但不同状态
+        for j, item_j in enumerate(items):
+            if j <= i or j in dropped:
+                continue
+            if group_i != _get_region_group(item_j.get("region", "")):
+                continue
+            if item_j.get("status", "") == status_i:
+                continue   # 同状态由第二层去重，不重复处理
+            if _same_event_by_fingerprint(fps[i], fps[j]):
+                same_law.append((j, item_j))
+
+        if not same_law:
+            continue
+
+        # 收集所有阶段（含 i 自身），按日期升序排列
+        all_stages = [(i, item_i)] + same_law
+        all_stages.sort(key=lambda x: x[1].get("date", ""))
+
+        # 保留 impact_score 最高的条目作为代表
+        winner_idx = max(
+            [x[0] for x in all_stages],
+            key=lambda x: int(items[x].get("impact_score", 1)),
+        )
+        for idx, _ in all_stages:
+            if idx != winner_idx:
+                dropped.add(idx)
+
+        # 构建时间线注释
+        timeline_parts = []
+        for _, item in all_stages:
+            date_short = (item.get("date") or "")[:7]   # YYYY-MM
+            status = item.get("status", "")
+            timeline_parts.append(f"{status} {date_short}")
+        timeline_note = " → ".join(timeline_parts)
+
+        existing = (
+            items[winner_idx].get("summary_zh")
+            or items[winner_idx].get("summary")
+            or ""
+        ).strip()
+        items[winner_idx]["summary_zh"] = (
+            f"{existing} 【进展时间线】{timeline_note}"
+        ).strip()
+
+    result = [item for i, item in enumerate(items) if i not in dropped]
+    if len(items) != len(result):
+        logger.info(
+            f"[深度聚类] {len(items)} 条 → {len(result)} 条"
+            f"（合并 {len(items) - len(result)} 条同法案不同阶段进展）"
+        )
+    return result
+
+
 def _period_label(period: str) -> str:
     labels = {"week": "周报（近7天）", "month": "月报（近30天）", "all": "全量报告"}
     return labels.get(period, "全量报告")
@@ -463,7 +537,10 @@ def cmd_run(args):
             except ImportError:
                 all_items = _deduplicate_report_items(all_items)
 
-            # 按 impact_score 截断：主报告 top-40，其余放附录
+            # 深度聚类：同法案不同阶段（草案→生效→执法）合并为时间线综述
+            all_items = _deep_cluster_timeline(all_items)
+
+            # 按 impact_score 截断：主报告 top-30，其余放附录
             main_items, appendix_items = _split_main_appendix(all_items)
             print_table(main_items)
 
@@ -526,6 +603,9 @@ def cmd_report(args):
             items = _deduplicate_report_items(items, merge_fn=merge_cluster_summary)
         except ImportError:
             items = _deduplicate_report_items(items)
+
+        # 深度聚类：同法案不同阶段合并为时间线综述
+        items = _deep_cluster_timeline(items)
 
         main_items, appendix_items = _split_main_appendix(items)
 

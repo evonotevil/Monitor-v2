@@ -73,6 +73,55 @@ def parse_rss_date(date_str: str) -> str:
     return datetime.now().strftime("%Y-%m-%d")
 
 
+def _clean_title(title: str, source: str = "") -> str:
+    """
+    标题净化：去掉乱码、重复媒体名称、噪音前后缀，保持标题简洁。
+
+    处理以下情况：
+      ① " - MediaName" 后缀（Google News 汇聚格式，已在 fetch_google_news 中处理，
+         此函数作为兜底）
+      ② "[MediaName] " 前缀
+      ③ "MediaName: " 前缀（RSS 常见）
+      ④ 乱码字符（非 ASCII 非中日韩的单字节噪音）
+      ⑤ 多余的空白
+    """
+    if not title:
+        return title
+
+    t = title.strip()
+
+    # ① 去掉 " - MediaName" 结尾（保留标题核心）
+    # 仅当后缀是已知媒体名称模式才处理（防止误删"EU - US Privacy Deal"这类标题）
+    if source and " - " in t:
+        parts = t.rsplit(" - ", 1)
+        # 如果后缀就是信源名称（模糊匹配，容忍大小写差异）
+        suffix = parts[-1].strip()
+        if source and (
+            suffix.lower() == source.lower()
+            or source.lower() in suffix.lower()
+            or len(suffix) < 40  # 短后缀通常是媒体名
+        ):
+            # 只有当前缀（实际标题）足够长才截断
+            if len(parts[0].strip()) >= 10:
+                t = parts[0].strip()
+
+    # ② 去掉 "[MediaName] " 前缀
+    t = re.sub(r'^\[[^\]]{1,40}\]\s*', '', t)
+
+    # ③ 去掉 "MediaName: " 前缀（须确保剩余部分仍足够长）
+    m = re.match(r'^([A-Za-z][A-Za-z0-9 &]{1,30}):\s+(.{10,})', t)
+    if m:
+        prefix_candidate = m.group(1)
+        # 只有当前缀看起来是媒体名（首字母大写，无动词形式）才去掉
+        if re.match(r'^[A-Z][a-zA-Z0-9 &]+$', prefix_candidate):
+            t = m.group(2)
+
+    # ④ 压缩多余空白
+    t = re.sub(r'\s{2,}', ' ', t).strip()
+
+    return t or title   # 净化失败时保留原标题
+
+
 def clean_html(html_text: str) -> str:
     if not html_text:
         return ""
@@ -93,33 +142,34 @@ def fetch_rss_feed(feed_config: dict) -> List[dict]:
         root = ET.fromstring(resp.content)
         ns = {"atom": "http://www.w3.org/2005/Atom"}
 
+        _src = feed_config["name"]
         for item in root.findall(".//item"):
-            title = item.findtext("title", "")
+            title = clean_html(item.findtext("title", ""))
             link = item.findtext("link", "")
             pub_date = item.findtext("pubDate", "")
             description = item.findtext("description", "")
             items.append({
-                "title": clean_html(title),
+                "title": _clean_title(title, _src),
                 "url": link,
                 "date": parse_rss_date(pub_date),
                 "summary": clean_html(description),
-                "source": feed_config["name"],
+                "source": _src,
                 "region": feed_config.get("region", ""),
                 "lang": feed_config.get("lang", "en"),
             })
 
         for entry in root.findall(".//atom:entry", ns):
-            title = entry.findtext("atom:title", "", ns)
+            title = clean_html(entry.findtext("atom:title", "", ns))
             link_el = entry.find("atom:link", ns)
             link = link_el.get("href", "") if link_el is not None else ""
             updated = entry.findtext("atom:updated", "", ns) or entry.findtext("atom:published", "", ns)
             summary = entry.findtext("atom:summary", "", ns) or entry.findtext("atom:content", "", ns)
             items.append({
-                "title": clean_html(title),
+                "title": _clean_title(title, _src),
                 "url": link,
                 "date": parse_rss_date(updated),
                 "summary": clean_html(summary or ""),
-                "source": feed_config["name"],
+                "source": _src,
                 "region": feed_config.get("region", ""),
                 "lang": feed_config.get("lang", "en"),
             })
@@ -161,8 +211,9 @@ def fetch_google_news(query: str, region_key: str = "en_US") -> List[dict]:
                 title = parts[0]
                 source_name = parts[1] if len(parts) > 1 else source_name
 
+            cleaned_title = _clean_title(clean_html(title), source_name)
             items.append({
-                "title": clean_html(title),
+                "title": cleaned_title,
                 "url": link,
                 "date": parse_rss_date(pub_date),
                 "summary": clean_html(description),
