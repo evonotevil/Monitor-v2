@@ -125,15 +125,16 @@ def _deduplicate_report_items(items: list) -> list:
     """
     对从 DB 查出的已翻译条目做跨来源去重。
 
-    逻辑：同一「显示分组」内，title_zh bigram 相似度 >0.50 且日期差 ≤3 天
-    的条目视为同一事件的不同来源报道，只保留来源权威性最高的那条
-    （impact_score 最高；相同则取 DB id 最小的，即最早入库的）。
+    逻辑：同一「显示分组」内，title_zh bigram 相似度 >0.80 且日期差 ≤3 天
+    的条目视为同一事件的不同来源报道，只保留发布日期最新的那条
+    （相同日期则取 DB id 最小的，即最早入库的），并在其摘要末尾注明
+    "另有 X 篇同主题报道"。
 
     与 _deduplicate_items 的区别：
     - 作用对象：DB 查询返回的 dict 列表（已含 title_zh）
     - 比对字段：title_zh（LLM 标准化中文标题，比英文原标题更利于跨源比对）
-    - 阈值：0.50（比英文标题的 0.65 宽松，因中文标准化后相似度本就更高）
-    - 日期窗口：3 天（英文原标题去重用 2 天）
+    - 阈值：0.80（仅合并标题高度相似的同事件多来源报道）
+    - 日期窗口：3 天；保留策略：最新日期优先
     """
     from datetime import date as _date
     dropped: set[int] = set()
@@ -160,14 +161,15 @@ def _deduplicate_report_items(items: list) -> list:
             except ValueError:
                 continue
             title_j = (item_j.get("title_zh") or item_j.get("title") or "").strip()
-            if _title_bigram_sim(title_i, title_j) > 0.50:
+            if _title_bigram_sim(title_i, title_j) > 0.80:
                 duplicates.append(j)
 
         if duplicates:
             group_idxs = [i] + duplicates
-            # 按 impact_score 降序，相同则取 id 最小（最早入库 = 通常是更权威来源）
+            # 日期最新的优先；相同日期取 id 最小（最早入库）
             group_idxs.sort(
-                key=lambda x: (-items[x].get("impact_score", 1), items[x].get("id") or 999999)
+                key=lambda x: (items[x].get("date", ""), -(items[x].get("id") or 0)),
+                reverse=True,
             )
             winner_idx = group_idxs[0]
             loser_count = len(group_idxs) - 1
@@ -268,9 +270,19 @@ def cmd_run(args):
             all_items = _deduplicate_report_items(all_items)
             print_table(all_items)
 
+            # 生成月度合规形势综述（LLM，失败时静默回退）
+            exec_summary = ""
+            try:
+                from translator import generate_executive_summary
+                logger.info("正在生成月度合规形势综述...")
+                exec_summary = generate_executive_summary(all_items)
+            except Exception as _e:
+                logger.warning(f"综述生成失败，跳过: {_e}")
+
             if args.output:
                 if args.output.endswith(".html"):
-                    path = save_html(all_items, args.output, period_label=label)
+                    path = save_html(all_items, args.output, period_label=label,
+                                     exec_summary=exec_summary)
                 else:
                     path = save_markdown(all_items, args.output)
                 logger.info(f"报告已保存到: {path}")
@@ -278,7 +290,8 @@ def cmd_run(args):
                 ts = datetime.now().strftime('%Y%m%d_%H%M%S')
                 prefix = {"week": "weekly", "month": "monthly", "all": "report"}.get(args.period, "report")
                 md_path = save_markdown(all_items, f"{prefix}_{ts}.md")
-                html_path = save_html(all_items, f"{prefix}_{ts}.html", period_label=label)
+                html_path = save_html(all_items, f"{prefix}_{ts}.html", period_label=label,
+                                      exec_summary=exec_summary)
                 logger.info(f"Markdown 报告: {md_path}")
                 logger.info(f"HTML 报告: {html_path}")
 
@@ -310,15 +323,25 @@ def cmd_report(args):
             return
 
         items = _deduplicate_report_items(items)
+
+        exec_summary = ""
         fmt = args.format.lower()
+        if fmt == "html":
+            try:
+                from translator import generate_executive_summary
+                exec_summary = generate_executive_summary(items)
+            except Exception as _e:
+                logger.warning(f"综述生成失败，跳过: {_e}")
+
         if fmt == "table":
             print_table(items)
         elif fmt in ("markdown", "md"):
             path = save_markdown(items, args.output) if args.output else save_markdown(items)
             print(f"Markdown 报告已保存到: {path}")
         elif fmt == "html":
-            path = (save_html(items, args.output, period_label=label) if args.output
-                    else save_html(items, period_label=label))
+            path = (save_html(items, args.output, period_label=label, exec_summary=exec_summary)
+                    if args.output
+                    else save_html(items, period_label=label, exec_summary=exec_summary))
             print(f"HTML 报告已保存到: {path}")
         else:
             print_table(items)

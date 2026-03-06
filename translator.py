@@ -836,6 +836,75 @@ def verify_duplicate_pairs(pairs: list) -> list:
     return [False] * len(pairs)
 
 
+# ── 月度综述生成 ─────────────────────────────────────────────────────
+
+def generate_executive_summary(items: list) -> str:
+    """
+    基于本月条目列表，用 LLM 生成 200-300 字的合规形势综述。
+    LLM 不可用时回退为规则统计摘要。
+    items: list of dict（含 title_zh、region、category_l1、status、impact_score）
+    """
+    if not items:
+        return ""
+
+    from collections import Counter
+    cat_counts    = Counter(item.get("category_l1", "其他") for item in items)
+    region_counts = Counter(item.get("region", "其他")      for item in items)
+    high_priority = [i for i in items if int(i.get("impact_score", 1)) >= 3]
+    enacted       = [i for i in items if i.get("status") in ("已生效", "即将生效")]
+    top_cats      = [c for c, _ in cat_counts.most_common(3)]
+    top_regions   = [r for r, _ in region_counts.most_common(3)]
+
+    if _HAS_AI and _AI_CLIENT:
+        # 取前 15 条高优先级条目作为上下文
+        sample = sorted(items, key=lambda x: -int(x.get("impact_score", 1)))[:15]
+        headlines = "\n".join(
+            f"- [{i.get('region','')}][{i.get('category_l1','')}][{i.get('status','')}] "
+            f"{i.get('title_zh','') or i.get('title','')}"
+            for i in sample
+        )
+        user_msg = (
+            f"以下是本月全球互联网平台合规动态（共 {len(items)} 条，"
+            f"高优先级 {len(high_priority)} 条，已生效/即将生效 {len(enacted)} 条）"
+            f"中影响力最高的 15 条标题：\n\n{headlines}\n\n"
+            f"请生成一段 200-300 字的「本月合规形势综述」，"
+            f"聚焦全球前三大合规趋势，语言简洁专业，"
+            f"面向互联网企业（视频/直播/UGC/社交）海外合规负责人，"
+            f"不使用 Markdown 标记，不分段，连贯叙述。"
+        )
+        try:
+            resp = _AI_CLIENT.chat.completions.create(
+                model=_LLM_MODEL,
+                max_tokens=500,
+                timeout=30.0,
+                extra_body=_LLM_EXTRA_BODY,
+                messages=[
+                    {"role": "system",
+                     "content": "你是互联网企业合规法务专家，用简洁中文撰写合规形势综述，"
+                                "不使用 Markdown 格式，直接输出纯文字段落。"},
+                    {"role": "user", "content": user_msg},
+                ],
+            )
+            text = resp.choices[0].message.content.strip()
+            # 去除意外的 Markdown 标记
+            text = re.sub(r'\*\*|__|\*|_|`|#+\s*', '', text).strip()
+            if len(text) >= 50:
+                logger.info(f"[AI exec-summary] 生成综述 {len(text)} 字")
+                return text
+        except Exception as e:
+            logger.warning(f"[AI exec-summary] 生成失败，回退规则摘要: {e}")
+
+    # 规则回退
+    return (
+        f"本月共收录全球互联网平台合规动态 {len(items)} 条，"
+        f"其中高优先级（已生效或执法动态）{len(high_priority)} 条，"
+        f"已生效或即将生效法规 {len(enacted)} 条。"
+        f"主要聚焦领域为{'、'.join(top_cats)}；"
+        f"重点地区包括{'、'.join(top_regions)}。"
+        f"建议合规团队重点关注{'、'.join(top_cats[:2])}领域的最新执法动向。"
+    )
+
+
 # ── 主入口 ────────────────────────────────────────────────────────────
 
 def translate_item_fields(item_dict: dict) -> dict:
