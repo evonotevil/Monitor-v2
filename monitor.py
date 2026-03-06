@@ -160,8 +160,10 @@ def cmd_run(args):
                         llm_filtered += 1
                         continue
 
-                    item.summary_zh = translated.get("summary_zh", "")
-                    item.title_zh   = translated.get("title_zh", "")
+                    item.summary_zh      = translated.get("summary_zh", "")
+                    item.title_zh        = translated.get("title_zh", "")
+                    item.detail_zh       = translated.get("detail_zh", "")
+                    item.compliance_note = translated.get("compliance_note", "")
 
                     # ── 应用 LLM 分类结果（覆盖正则，空值保留正则原值）──
                     llm_region   = translated.get("_llm_region", "")

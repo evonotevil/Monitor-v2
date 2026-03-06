@@ -26,6 +26,8 @@ class LegislationItem:
     lang: str = "en"        # 语言
     title_zh: str = ""      # 标题中文翻译
     summary_zh: str = ""    # 摘要中文翻译
+    detail_zh: str = ""     # 正文深度分析（120-200字）
+    compliance_note: str = ""  # 合规提示（1-2句）
     impact_score: int = 1   # 影响评分 1=低/2=中/3=高 (信源层级 × 状态)
     id: Optional[int] = None
 
@@ -59,6 +61,8 @@ class Database:
                 lang TEXT DEFAULT 'en',
                 title_zh TEXT DEFAULT '',
                 summary_zh TEXT DEFAULT '',
+                detail_zh TEXT DEFAULT '',
+                compliance_note TEXT DEFAULT '',
                 impact_score INTEGER DEFAULT 1,
                 created_at TEXT DEFAULT (datetime('now')),
                 UNIQUE(title, source_url)
@@ -79,9 +83,11 @@ class Database:
         """)
         # ── 迁移: 旧表补列 ────────────────────────────────────────────
         for col, definition in [
-            ("title_zh",     "TEXT DEFAULT ''"),
-            ("summary_zh",   "TEXT DEFAULT ''"),
-            ("impact_score", "INTEGER DEFAULT 1"),
+            ("title_zh",        "TEXT DEFAULT ''"),
+            ("summary_zh",      "TEXT DEFAULT ''"),
+            ("detail_zh",       "TEXT DEFAULT ''"),
+            ("compliance_note", "TEXT DEFAULT ''"),
+            ("impact_score",    "INTEGER DEFAULT 1"),
         ]:
             try:
                 self.conn.execute(f"SELECT {col} FROM legislation LIMIT 1")
@@ -100,16 +106,20 @@ class Database:
             self.conn.execute("""
                 INSERT INTO legislation
                     (region, category_l1, category_l2, title, date, status, summary,
-                     source_name, source_url, lang, title_zh, summary_zh, impact_score)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     source_name, source_url, lang, title_zh, summary_zh,
+                     detail_zh, compliance_note, impact_score)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(title, source_url) DO UPDATE SET
-                    title_zh   = CASE WHEN excluded.title_zh   != '' THEN excluded.title_zh   ELSE legislation.title_zh   END,
-                    summary_zh = CASE WHEN excluded.summary_zh != '' THEN excluded.summary_zh ELSE legislation.summary_zh END
+                    title_zh        = CASE WHEN excluded.title_zh        != '' THEN excluded.title_zh        ELSE legislation.title_zh        END,
+                    summary_zh      = CASE WHEN excluded.summary_zh      != '' THEN excluded.summary_zh      ELSE legislation.summary_zh      END,
+                    detail_zh       = CASE WHEN excluded.detail_zh       != '' THEN excluded.detail_zh       ELSE legislation.detail_zh       END,
+                    compliance_note = CASE WHEN excluded.compliance_note != '' THEN excluded.compliance_note ELSE legislation.compliance_note END
             """, (
                 item.region, item.category_l1, item.category_l2,
                 item.title, item.date, item.status, item.summary,
                 item.source_name, item.source_url, item.lang,
-                item.title_zh, item.summary_zh, item.impact_score,
+                item.title_zh, item.summary_zh,
+                item.detail_zh, item.compliance_note, item.impact_score,
             ))
             self.conn.commit()
             return self.conn.total_changes > 0
