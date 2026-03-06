@@ -38,25 +38,18 @@ jobs:
         run: pip install -r requirements.txt
 
       # ── 3. 抓取最新数据（写入 DB，已有条目 IGNORE）─────────────────
-      # continue-on-error: 抓取/翻译失败不阻断后续日报推送（DB 中已有数据仍可检查）
       - name: Fetch latest data
         continue-on-error: true
         env:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
         run: python monitor.py run --period week
 
-      # ── 4. 检查昨日新增，有则推送飞书 ────────────────────────────
-      - name: Check and notify daily updates
-        env:
-          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
-        run: python daily_check.py
-
-      # ── 5. 将更新后的 DB 提交回仓库 ────────────────────────────────
+      # ── 4. 将更新后的 DB 提交回仓库 ────────────────────────────────
       - name: Commit updated DB
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/monitor.db
           git diff --staged --quiet || \
-            git commit -m "🔄 每日数据更新 $(date -u +%Y-%m-%d) [skip ci]"
+            git commit -m "每日数据更新 $(date -u +%Y-%m-%d) [skip ci]"
           git push

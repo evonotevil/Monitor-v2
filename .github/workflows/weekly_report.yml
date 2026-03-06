@@ -1,4 +1,4 @@
-name: 全球游戏合规周报
+name: 全球互联网合规周报
 
 on:
   # 每周一 UTC 01:47 = 北京/新加坡时间 09:47
@@ -80,7 +80,7 @@ jobs:
           echo "PDF_URL=${BASE}/${PDF_FILENAME}" >> $GITHUB_ENV
           echo "PDF_FILENAME=${PDF_FILENAME}" >> $GITHUB_ENV
 
-      # ── 6. 先提交并推送报告，再发飞书（确保文件已在仓库中）─────────
+      # ── 6. 提交并推送报告回仓库 ──────────────────────────────────────
       - name: Commit reports back to repo
         run: |
           git config user.name  "github-actions[bot]"
@@ -91,22 +91,13 @@ jobs:
           ARCHIVE_DIR="reports/archive/${WEEK_ID}"
           mkdir -p "${ARCHIVE_DIR}"
 
-          # 将本周 HTML 存入归档（HTML 约 70KB，适合文本分析；PDF 1.8MB 太大不归档）
+          # 将本周 HTML 存入归档
           cp reports/latest.html "${ARCHIVE_DIR}/weekly.html"
 
           # 更新 latest 文件 + DB + 本周存档
           git add reports/latest.html reports/latest.pdf data/monitor.db
           git add "${ARCHIVE_DIR}/weekly.html"
 
-          # 如果没有变化就跳过 commit（避免空提交报错）
           git diff --staged --quiet || \
-            git commit -m "📊 周报存档 ${WEEK_ID} $(date -u +%Y-%m-%d) [skip ci]"
+            git commit -m "周报存档 ${WEEK_ID} $(date -u +%Y-%m-%d) [skip ci]"
           git push
-
-      # ── 7. 发送飞书卡片通知（文件已在仓库，链接可访问）──────────────
-      - name: Send Feishu notification
-        env:
-          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
-          REPORT_HTML_URL:    ${{ env.HTML_URL }}
-          REPORT_PDF_URL:     ${{ env.PDF_URL }}
-        run: python feishu_notify.py
