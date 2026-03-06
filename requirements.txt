@@ -1,0 +1,6 @@
+requests>=2.28.0
+beautifulsoup4>=4.12.0
+deep-translator>=1.11.0
+openai>=1.0.0
+# PDF 生成（需要额外运行: playwright install chromium）
+playwright>=1.40.0

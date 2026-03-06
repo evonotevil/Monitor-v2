@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip3 --version)",
+      "Bash(pip3 install -r requirements.txt)",
+      "Bash(python3 -c \":*)",
+      "Bash(python3 monitor.py stats)",
+      "Bash(python3 monitor.py report --format html -o test_report.html)",
+      "Bash(python3 monitor.py report --format md -o test_report.md)",
+      "Bash(python3 monitor.py query -k \"loot box\")",
+      "Bash(python3 monitor.py run --days 90)",
+      "Bash(python3 monitor.py report --format table --region 中国)",
+      "Bash(open /Users/lilithgames/Desktop/Legal-tools/Monitor/reports/report_20260226_212217.html)",
+      "Bash(pip3 install deep-translator)",
+      "Bash(open /Users/lilithgames/Desktop/Legal-tools/Monitor/reports/report_20260226_215623.html)",
+      "Bash(python3 monitor.py report --region 北美)",
+      "Bash(python3 monitor.py query -k \"FTC\")",
+      "Bash(python3 monitor.py query -k \"COPPA\")",
+      "Bash(python3 monitor.py query -k \"年龄验证\")",
+      "Bash(python3 monitor.py report --format table)",
+      "Bash(python3 monitor.py run --help)",
+      "Bash(python3 monitor.py report --help)",
+      "Bash(python3 -c \"import requests, bs4\")",
+      "Bash(python3 monitor.py run --period week --no-translate)",
+      "Bash(ls -t /Users/lilithgames/Desktop/Legal-tools/Monitor/reports/*.html)",
+      "Bash(open /Users/lilithgames/Desktop/Legal-tools/Monitor/reports/weekly_20260227_111323.html)",
+      "Bash(python3 monitor.py run --period week)",
+      "Bash(open /Users/lilithgames/Desktop/Legal-tools/Monitor/reports/weekly_20260227_135247.html)",
+      "Bash(python -c \"import reporter; import fetcher; import config; print\\(''✓ All modules import OK''\\)\")",
+      "Bash(python3 -c \"import reporter; import fetcher; import config; print\\(''✓ All modules import OK''\\)\")",
+      "Bash(ls reports/weekly_*.html)",
+      "Bash(xargs open)",
+      "Bash(python3 -c \"import config; print\\(''RSS源数量:'', len\\(config.RSS_FEEDS\\)\\); [print\\(f''  {f[\"\"tier\"\"]:8} | {f[\"\"name\"\"]}''\\) for f in config.RSS_FEEDS]\")"
+    ]
+  }
+}

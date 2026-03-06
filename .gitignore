@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 环境变量（本地调试用）
+.env
+.env.local
+
+# SQLite 临时文件
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+
+# 日志（不入库，CI 产物查 Actions 日志即可）
+data/*.log
+
+# 本地测试产生的时间戳报告——不入库，CI 产物用 latest.* 和 archive/ 代替
+reports/report_*.html
+reports/report_*.pdf
+reports/report_*.md
+reports/weekly_*.html
+reports/weekly_*.pdf
+reports/weekly_*.md
+# generate_pdf.py 输出的带日期命名 PDF（latest.pdf 是唯一入库版本）
+reports/Lilith-Legal-Compliance-Report-*.pdf
+
+# 始终保留 latest 文件 和 每周存档目录
+!reports/latest.html
+!reports/latest.pdf
+!reports/.gitkeep
+!reports/archive/
+!reports/archive/**
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

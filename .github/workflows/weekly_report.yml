@@ -1,0 +1,112 @@
+name: 全球游戏合规周报
+
+on:
+  # 每周一 UTC 01:47 = 北京/新加坡时间 09:47
+  schedule:
+    - cron: '47 1 * * 1'
+  # 支持手动触发（Settings → Actions → Run workflow）
+  workflow_dispatch:
+
+permissions:
+  contents: write   # 允许 CI 提交报告回仓库
+
+jobs:
+  generate-and-notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. 拉取代码（浅克隆，仅需最新一次 commit；DB 已由当日 daily_check 更新）
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
+
+      # ── 2. Python 环境 ─────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install playwright
+
+      # ── Playwright 浏览器缓存（命中时安装从 90s 降到 5s）──────────
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('requirements.txt') }}
+
+      - name: Install Playwright Chromium (only if cache miss)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: playwright install --with-deps chromium
+
+      - name: Install Chromium system deps (always, fast if browsers cached)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: playwright install-deps chromium
+
+      # ── 3. 生成 HTML 报告（DB 已由当日 daily_check 更新，无需重复抓取）
+      #    注意：周一 daily_check 在 09:33 运行，本流程在 09:47，DB 已最新
+      #    如需强制重新抓取，可手动触发并在步骤前加 python monitor.py run
+      - name: Generate HTML report
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: python monitor.py report --format html --period week
+
+      # ── 4. 生成 PDF（同时写 latest.html / latest.pdf 和带日期文件名）
+      - name: Generate PDF report
+        run: python generate_pdf.py
+
+      # ── 5. 计算本次报告的公开 URL ──────────────────────────────────
+      - name: Set report URLs
+        run: |
+          REPO="${{ github.repository }}"
+          BRANCH="main"
+          BASE="https://raw.githubusercontent.com/${REPO}/${BRANCH}/reports"
+          # 带日期的 PDF 文件名（与 generate_pdf.py 保持一致）
+          PDF_DATE=$(python -c "from datetime import datetime; print(datetime.now().strftime('%d-%m-%Y'))")
+          PDF_FILENAME="Lilith-Legal-Compliance-Report-${PDF_DATE}.pdf"
+          echo "HTML_URL=https://htmlpreview.github.io/?${BASE}/latest.html" >> $GITHUB_ENV
+          echo "PDF_URL=${BASE}/${PDF_FILENAME}" >> $GITHUB_ENV
+          echo "PDF_FILENAME=${PDF_FILENAME}" >> $GITHUB_ENV
+
+      # ── 6. 先提交并推送报告，再发飞书（确保文件已在仓库中）─────────
+      - name: Commit reports back to repo
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 计算本周 ISO 周号（如 2026-W10），用于存档目录名
+          WEEK_ID=$(date -u +%Y-W%V)
+          ARCHIVE_DIR="reports/archive/${WEEK_ID}"
+          mkdir -p "${ARCHIVE_DIR}"
+
+          # 将本周 HTML 存入归档（HTML 约 70KB，适合文本分析；PDF 1.8MB 太大不归档）
+          cp reports/latest.html "${ARCHIVE_DIR}/weekly.html"
+
+          # 更新 latest 文件 + DB + 本周存档
+          git add reports/latest.html reports/latest.pdf data/monitor.db
+          git add "${ARCHIVE_DIR}/weekly.html"
+
+          # 如果没有变化就跳过 commit（避免空提交报错）
+          git diff --staged --quiet || \
+            git commit -m "📊 周报存档 ${WEEK_ID} $(date -u +%Y-%m-%d) [skip ci]"
+          git push
+
+      # ── 7. 发送飞书卡片通知（文件已在仓库，链接可访问）──────────────
+      - name: Send Feishu notification
+        env:
+          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+          REPORT_HTML_URL:    ${{ env.HTML_URL }}
+          REPORT_PDF_URL:     ${{ env.PDF_URL }}
+        run: python feishu_notify.py
