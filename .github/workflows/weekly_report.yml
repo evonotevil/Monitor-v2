@@ -1,9 +1,9 @@
-name: 全球互联网合规周报
+name: 全球互联网合规月报
 
 on:
-  # 每周一 UTC 01:47 = 北京/新加坡时间 09:47
+  # 每月1日 UTC 01:47 = 北京/新加坡时间 09:47
   schedule:
-    - cron: '47 1 * * 1'
+    - cron: '47 1 1 * *'
   # 支持手动触发（Settings → Actions → Run workflow）
   workflow_dispatch:
 
@@ -56,12 +56,12 @@ jobs:
         run: playwright install-deps chromium
 
       # ── 3. 生成 HTML 报告（DB 已由当日 daily_check 更新，无需重复抓取）
-      #    注意：周一 daily_check 在 09:33 运行，本流程在 09:47，DB 已最新
+      #    注意：每月1日 daily_check 在 09:33 运行，本流程在 09:47，DB 已最新
       #    如需强制重新抓取，可手动触发并在步骤前加 python monitor.py run
       - name: Generate HTML report
         env:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-        run: python monitor.py report --format html --period week
+        run: python monitor.py report --format html --period month
 
       # ── 4. 生成 PDF（同时写 latest.html / latest.pdf 和带日期文件名）
       - name: Generate PDF report
@@ -86,18 +86,19 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # 计算本周 ISO 周号（如 2026-W10），用于存档目录名
-          WEEK_ID=$(date -u +%Y-W%V)
-          ARCHIVE_DIR="reports/archive/${WEEK_ID}"
+          # 计算上月年月（如 2026-02），用于存档目录名
+          MONTH_ID=$(date -u -d "$(date +%Y-%m-01) -1 month" +%Y-%m 2>/dev/null || \
+                     python3 -c "from datetime import date; t=date.today(); m=t.month-1 or 12; y=t.year-(1 if t.month==1 else 0); print(f'{y}-{m:02d}')")
+          ARCHIVE_DIR="reports/archive/${MONTH_ID}"
           mkdir -p "${ARCHIVE_DIR}"
 
-          # 将本周 HTML 存入归档
-          cp reports/latest.html "${ARCHIVE_DIR}/weekly.html"
+          # 将本月 HTML 存入归档
+          cp reports/latest.html "${ARCHIVE_DIR}/monthly.html"
 
-          # 更新 latest 文件 + DB + 本周存档
+          # 更新 latest 文件 + DB + 本月存档
           git add reports/latest.html reports/latest.pdf data/monitor.db
-          git add "${ARCHIVE_DIR}/weekly.html"
+          git add "${ARCHIVE_DIR}/monthly.html"
 
           git diff --staged --quiet || \
-            git commit -m "周报存档 ${WEEK_ID} $(date -u +%Y-%m-%d) [skip ci]"
+            git commit -m "月报存档 ${MONTH_ID} $(date -u +%Y-%m-%d) [skip ci]"
           git push

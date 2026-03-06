@@ -42,7 +42,7 @@ jobs:
         continue-on-error: true
         env:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-        run: python monitor.py run --period week
+        run: python monitor.py run --period month
 
       # ── 4. 将更新后的 DB 提交回仓库 ────────────────────────────────
       - name: Commit updated DB
