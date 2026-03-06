@@ -75,7 +75,7 @@ jobs:
           BASE="https://raw.githubusercontent.com/${REPO}/${BRANCH}/reports"
           # 带日期的 PDF 文件名（与 generate_pdf.py 保持一致）
           PDF_DATE=$(python -c "from datetime import datetime; print(datetime.now().strftime('%d-%m-%Y'))")
-          PDF_FILENAME="Lilith-Legal-Compliance-Report-${PDF_DATE}.pdf"
+          PDF_FILENAME="Bilibili-Legal-Compliance-Report-${PDF_DATE}.pdf"
           echo "HTML_URL=https://htmlpreview.github.io/?${BASE}/latest.html" >> $GITHUB_ENV
           echo "PDF_URL=${BASE}/${PDF_FILENAME}" >> $GITHUB_ENV
           echo "PDF_FILENAME=${PDF_FILENAME}" >> $GITHUB_ENV

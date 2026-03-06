@@ -78,7 +78,7 @@ def main():
 
     html_path = args.input or find_latest_html()
     today = datetime.now()
-    pdf_name = f"Lilith-Legal-Compliance-Report-{today.strftime('%d-%m-%Y')}.pdf"
+    pdf_name = f"Bilibili-Legal-Compliance-Report-{today.strftime('%d-%m-%Y')}.pdf"
     pdf_path  = args.output or (REPORTS_DIR / pdf_name)
 
     asyncio.run(html_to_pdf(html_path, pdf_path))
