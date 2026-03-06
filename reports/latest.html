@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>全球互联网合规动态监控报告</title>
+<style>
+/* ── 基础 Reset ── */
+* { margin:0; padding:0; box-sizing:border-box; }
+
+/* ── 全局：Instagram 风清爽配色 ── */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Noto Sans SC", "PingFang SC", "Helvetica Neue", sans-serif;
+    background: #F5F5F7;
+    color: #1D1D1F;
+    padding: 28px 24px;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+}
+.container { max-width: 1700px; margin: 0 auto; }
+
+/* ── 头部（白底，logo 原色显示） ── */
+.header {
+    background: #FFFFFF;
+    border-radius: 16px;
+    padding: 18px 24px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    box-shadow: 0 1px 0 #E8E8ED, 0 2px 8px rgba(0,0,0,0.04);
+}
+.header-left h1 {
+    font-size: 19px;
+    font-weight: 700;
+    color: #1D1D1F;
+    letter-spacing: -0.2px;
+}
+.header-left .meta {
+    font-size: 12px;
+    color: #86868B;
+    margin-top: 3px;
+    letter-spacing: 0.1px;
+}
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+.header-logo {
+    height: 34px;
+    width: auto;
+    object-fit: contain;
+}
+.brand-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: #86868B;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border-left: 1px solid #E8E8ED;
+    padding-left: 12px;
+    white-space: nowrap;
+}
+
+/* ── 卡片通用 ── */
+.card {
+    background: #FFFFFF;
+    border-radius: 12px;
+    box-shadow: 0 1px 0 #E8E8ED, 0 2px 6px rgba(0,0,0,0.03);
+    margin-bottom: 12px;
+}
+
+/* ── 分类颜色图例 ── */
+.legend {
+    padding: 12px 18px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    align-items: center;
+}
+.legend::before {
+    content: "分类";
+    font-size: 11px;
+    color: #86868B;
+    font-weight: 600;
+    white-space: nowrap;
+    margin-right: 4px;
+}
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* ── 筛选栏 ── */
+.toolbar {
+    padding: 12px 18px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.toolbar label {
+    font-size: 11px;
+    color: #86868B;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+.toolbar select, .toolbar input {
+    padding: 6px 10px;
+    border: 1px solid #E8E8ED;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #1D1D1F;
+    background: #F5F5F7;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+}
+.toolbar select:focus, .toolbar input:focus {
+    border-color: #6E6EF7;
+    background: #FFFFFF;
+    box-shadow: 0 0 0 3px rgba(110,110,247,0.08);
+}
+.toolbar input { width: 210px; }
+.result-count { margin-left: auto; font-size: 11px; color: #86868B; }
+
+/* ── 表格 ── */
+.table-wrap {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 0 #E8E8ED, 0 2px 6px rgba(0,0,0,0.03);
+}
+table { width: 100%; border-collapse: collapse; background: white; }
+thead tr { background: #F5F5F7; border-bottom: 1px solid #E8E8ED; }
+th {
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #86868B;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+}
+th:hover { color: #1D1D1F; }
+th .sort-icon { opacity: 0.35; margin-left: 3px; font-size: 9px; }
+th.sorted .sort-icon { opacity: 0.9; color: #6E6EF7; }
+
+/* ── 分组 header 行（柔和紫蓝） ── */
+.group-row td.group-header {
+    background: #F0F0FF;
+    color: #3D3D9E;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 8px 14px;
+    letter-spacing: 0.4px;
+    border-left: 3px solid #6E6EF7;
+}
+.group-count {
+    display: inline-block;
+    background: rgba(110,110,247,0.12);
+    color: #5757D9;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 8px;
+    border-radius: 10px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+/* ── 数据行 ── */
+tbody tr:not(.group-row) {
+    border-bottom: 1px solid #F5F5F7;
+    transition: background 0.12s;
+}
+tbody tr:not(.group-row):hover { background: #FAFAFF; }
+td { padding: 9px 12px; font-size: 12px; vertical-align: top; }
+
+.td-region {
+    white-space: nowrap;
+    font-weight: 600;
+    color: #6E6EF7;
+    font-size: 11px;
+}
+.td-cat { white-space: nowrap; }
+.td-title { min-width: 200px; max-width: 340px; line-height: 1.55; }
+.td-title-zh {
+    display: block;
+    font-weight: 600;
+    color: #1D1D1F;
+    font-size: 12.5px;
+    line-height: 1.6;
+    margin-bottom: 4px;
+}
+.td-title-orig {
+    display: block;
+    font-size: 10.5px;
+    color: #AEAEB2;
+    margin-top: 1px;
+}
+.td-title-orig a { color: #AEAEB2; text-decoration: none; }
+.td-title-orig a:hover { text-decoration: underline; color: #636366; }
+.td-source {
+    font-size: 10px;
+    color: #AEAEB2;
+    margin-top: 3px;
+    display: block;
+}
+.td-date {
+    white-space: nowrap;
+    font-size: 11.5px;
+    color: #636366;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+}
+.td-status { white-space: nowrap; }
+.td-summary { max-width: 320px; color: #636366; line-height: 1.55; font-size: 11px; }
+
+/* ── 标签 badges ── */
+.cat-badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.tier-badge {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+/* ── 正文展开行 ── */
+.main-row.has-detail { cursor: pointer; }
+.main-row.has-detail:hover .td-title-zh { color: #4A4AE0; }
+.expand-icon {
+    font-size: 8px;
+    color: #AEAEB2;
+    margin-right: 5px;
+    display: inline-block;
+    transition: transform 0.18s;
+    vertical-align: middle;
+}
+.main-row.expanded .expand-icon { transform: rotate(90deg); color: #6E6EF7; }
+.td-detail {
+    padding: 0 24px 14px 40px !important;
+    background: #FAFBFF;
+    border-left: 3px solid #6E6EF7;
+    border-bottom: 1px solid #EBEBFF;
+}
+.detail-body { padding-top: 10px; }
+.detail-text {
+    font-size: 12.5px;
+    line-height: 1.75;
+    color: #3D3D4E;
+    margin-bottom: 10px;
+    white-space: pre-wrap;
+}
+.detail-note {
+    font-size: 12px;
+    line-height: 1.65;
+    color: #1E40AF;
+    background: #EFF6FF;
+    padding: 7px 12px;
+    border-radius: 6px;
+    border-left: 3px solid #93C5FD;
+    white-space: pre-wrap;
+}
+
+/* ── 无数据提示 ── */
+.no-data {
+    text-align: center;
+    padding: 56px;
+    color: #AEAEB2;
+    font-size: 13px;
+    display: none;
+}
+
+/* ── 页脚 ── */
+.footer {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 11px;
+    color: #AEAEB2;
+    padding-bottom: 8px;
+    letter-spacing: 0.3px;
+}
+
+/* ── 响应式 ── */
+@media (max-width: 900px) {
+    .td-summary { display: none; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- 头部 -->
+  <div class="header">
+    <div class="header-left">
+      <h1>全球互联网合规动态监控报告</h1>
+      <div class="meta">生成时间：2026-03-06 08:33&nbsp;&nbsp;·&nbsp;&nbsp;共 26 条动态</div>
+    </div>
+    <div class="header-brand">
+      <img src="data:image/png;base64,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" alt="Bilibili" class="header-logo">
+      <span class="brand-name">Bilibili Legal</span>
+    </div>
+  </div>
+
+  <!-- 筛选栏 -->
+  <div class="card">
+  <div class="toolbar">
+    <label>地区</label>
+    <select id="fGroup" onchange="applyFilters()">
+      <option value="">全部地区</option>
+    </select>
+    <label>分类</label>
+    <select id="fCat" onchange="applyFilters()">
+      <option value="">全部</option>
+    </select>
+    <label>状态</label>
+    <select id="fStatus" onchange="applyFilters()">
+      <option value="">全部</option>
+    </select>
+    <input type="search" id="fKeyword" placeholder="🔍 关键词搜索..." oninput="applyFilters()">
+    <span class="result-count" id="resultCount"></span>
+  </div>
+  </div>
+
+  <!-- 表格 -->
+  <div class="table-wrap">
+    <table id="mainTable">
+      <thead>
+        <tr>
+          <th onclick="sortTable(0)">区域 <span class="sort-icon">⇅</span></th>
+          <th onclick="sortTable(1)">类别 <span class="sort-icon">⇅</span></th>
+          <th onclick="sortTable(2)">标题 <span class="sort-icon">⇅</span></th>
+          <th onclick="sortTable(3)">发布时间 <span class="sort-icon">⇅</span></th>
+          <th onclick="sortTable(4)">标签 <span class="sort-icon">⇅</span></th>
+          <th>摘要(中文)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="group-row" data-group="亚太"><td colspan="6" class="group-header">🌏 亚太<span class="group-count">3 条</span></td></tr>
+        <tr class="main-row" data-row-id="r140590324830720" data-date="2026-03-06" data-cat="未成年人保护" data-region="澳大利亚" data-group="亚太" data-impact="3" style="border-left:3px solid #6EE7B7;"><td class="td-region">澳大利亚</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">[澳大利亚] 澳大利亚下周起要求玩家验证年龄以玩 GTA Online 等 R18+ 游戏</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMi2wFBVV95cUxNb0NJNml4ZllEWVNUdlBpb1FWNUNaMUNqYzIyNHRfeWloU3pkUEphV2FabURteWpxN3J0bjcwN2FEeUR6MDVPQ3NqSDIybTNqQlNmZWZ3WVFvendZb3ZMNk53MG01OVN5LWw0d0dtdXR2SktjUGs4NWIzWWlIVzdzaFpPOXhBWjF6amEtNnR5Rnc2UTktMUEyMXhWMGhsdjdwQjNFTGhHZmlaSGxsSlRKWlVHRWhQbURZVWJCaUlfN2QzcW5WUUJDMk9TQ2Zmek9YWFE4cWl5SDF2bFk?oc=5" target="_blank" rel="noopener" title="澳大利亚要求玩家验证年龄方可游玩 R18+ 评级的 GTA Online 等在线游戏，新规下周生效。">From next week, Australia will require users to verify their age to play GTA Online and other R18+ online games</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> PC Gamer</span></td><td class="td-date">2026-03-06</td><td class="td-status"><span class="status-badge" style="background:#DCFCE7;color:#166534;">已生效</span></td><td class="td-summary">澳大利亚要求玩家验证年龄方可游玩 R18+ 评级的 GTA Online 等在线游戏，新规下周生效。</td></tr>
+        <tr class="main-row" data-row-id="r140590324838528" data-date="2026-03-06" data-cat="未成年人保护" data-region="新西兰" data-group="亚太" data-impact="1" style="border-left:3px solid #6EE7B7;"><td class="td-region">新西兰</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">新西兰调查呼吁加强儿童在线安全规则</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMitAFBVV95cUxQdmxKb2puaURITUtCWjRsdmQzVGN5Z0hBa2lkM1d0V3ZlLUpXZWtKZElyeXlFclhackV4bTlGa1ItUTNDMjBGblhacVJFWlBkeW9BYzFDMU9VNkdxSXZXYThBdmFtQm40ekZfcmY2eTRfQ2pHWnptUU5TZS1RWFh1NGJLU3VzcnF5Vmk1cUZmSlJVc0E1ZHZqaUNyQldUUnppY1E2c1J5Zm1sYWZRczZZYU5CWDg?oc=5" target="_blank" rel="noopener" title="新西兰开展在线安全调查，建议强化儿童数据保护与内容监管机制，保障其网络安全。">New Zealand inquiry calls for stronger online safety rules for children</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> Telecompaper</span></td><td class="td-date">2026-03-06</td><td class="td-status"><span class="status-badge" style="background:#D97706;color:#FFFFFF;">立法动态</span></td><td class="td-summary">新西兰开展在线安全调查，建议强化儿童数据保护与内容监管机制，保障其网络安全。</td></tr>
+        <tr class="main-row" data-row-id="r140590324836608" data-date="2026-03-05" data-cat="未成年人保护" data-region="澳大利亚" data-group="亚太" data-impact="1" style="border-left:3px solid #6EE7B7;"><td class="td-region">澳大利亚</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">[澳大利亚] 澳大利亚审查未成年人社交媒体禁令</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMiekFVX3lxTE1MVlI4WVB5QnlNZUZZd1lTQmh3cFhRdEd6d1VOT2pYSURVQVpPOGZmUUx3cUgxSGJyV0FPZzdfbE5lUmFUQjVMZ1g0ZE5GRGpCVmdlQld5QmJfdlRSZHNrcjgyTzVYOEhMTVNnbGdhY05TVlJRYW12VEl3?oc=5" target="_blank" rel="noopener" title="澳大利亚政府评估对未成年人使用社交媒体的禁令，以平衡隐私与网络参与。">Australia reviews children’s social media ban</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> Digital Watch Observatory</span></td><td class="td-date">2026-03-05</td><td class="td-status"><span class="status-badge" style="background:#D97706;color:#FFFFFF;">立法动态</span></td><td class="td-summary">澳大利亚政府评估对未成年人使用社交媒体的禁令，以平衡隐私与网络参与。</td></tr>
+        <tr class="group-row" data-group="欧洲"><td colspan="6" class="group-header">🌍 欧洲<span class="group-count">6 条</span></td></tr>
+        <tr class="main-row" data-row-id="r140590324830656" data-date="2026-03-04" data-cat="内容监管" data-region="欧洲" data-group="欧洲" data-impact="1" style="border-left:3px solid #94A3B8;"><td class="td-region">欧洲</td><td class="td-cat"><span class="cat-badge" style="background:#E2E8F0;color:#334155;border:1px solid #94A3B8;">内容监管</span></td><td class="td-title"><span class="td-title-zh">欧盟委员会考虑将游戏平台纳入数字规则监管</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMiggFBVV95cUxOWDhrTG5aVjFiZTQzR1IzeVBRUWJtWXU2QXZPTFhOSTFTT3RxS3VhRmxvMk84MFhuVzJQYV9wVGktZjRHdW5RU25WSmpKbnhQbHQxTEpNcThJZzlBNi1XNHVzUEFfRTFGaWZxSXQ1dFJKdDA0alBHdnZiZ2FsMF90TGZ3?oc=5" target="_blank" rel="noopener" title="欧盟委员会探讨将游戏平台纳入其数字规则监管范围，以加强内容合规管理。">European Commission Mulls Bringing Gaming Platforms Under Its Digital Rules</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> battleofguardians.com</span></td><td class="td-date">2026-03-04</td><td class="td-status"><span class="status-badge" style="background:#D97706;color:#FFFFFF;">立法动态</span></td><td class="td-summary">欧盟委员会探讨将游戏平台纳入其数字规则监管范围，以加强内容合规管理。</td></tr>
+        <tr class="main-row" data-row-id="r140590326950912" data-date="2026-03-03" data-cat="未成年人保护" data-region="英国" data-group="欧洲" data-impact="2" style="border-left:3px solid #6EE7B7;"><td class="td-region">英国</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">[英国] 英国就儿童在线生活启动咨询，游戏行业需关注</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMirgFBVV95cUxQa2NXRUFCV0NmQ29nNkJGcUFwUTVBbFFHZE0wUHdQcWJPbHI4YWZ4dC1QUms3ZEs2VkNIanhhYk14R2dWZE5udy00V05lajlqZXNWemRRLUQtYTB3c3BObHZrZVNkZ0phMWlwWU1vUFFUZ1U5R0FhUzllSFRjaDFPQm5VcXlOV0tPTzZmeWJ2M3pZb3lqZGJPTjZKSmRNb0I3bnBoQ2pYN3VXYlRFQ0E?oc=5" target="_blank" rel="noopener" title="英国政府就儿童网络使用启动咨询，游戏公司需调整内容与安全措施以符合监管要求。 [另有 1 篇同主题报道]">UK consultation on kids’ online lives: what the video games industry needs to know</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> PocketGamer.biz</span></td><td class="td-date">2026-03-03</td><td class="td-status"><span class="status-badge" style="background:#DBEAFE;color:#1E40AF;">草案/征求意见</span></td><td class="td-summary">英国政府就儿童网络使用启动咨询，游戏公司需调整内容与安全措施以符合监管要求。 [另有 1 篇同主题报道]</td></tr>
+        <tr class="main-row" data-row-id="r140590324842048" data-date="2026-03-02" data-cat="未成年人保护" data-region="英国" data-group="欧洲" data-impact="2" style="border-left:3px solid #6EE7B7;"><td class="td-region">英国</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">[英国] CCDH回应英国政府儿童社交媒体使用咨询</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMipgFBVV95cUxPU2dka19mZlAzb2xackVCU0dtMUxCTXA5UE5xbVR4OVdDUlBlZ25xNW1ZRFkxTngwcjJxazBXamhJODV0b3NIR2VlMjgxYjRmR1RHbmF2Nzc5NS14d3Q1REMzbXVRM0d4QzZ5WXpQbGc5ZThTYkRfa3lPLVNMMW5wVllGRHNIeWxReFFnNk5Mb04tbFdMMDhlVkNoWTlSWHZUUEFoM3hn?oc=5" target="_blank" rel="noopener" title="CCDH就英国儿童使用社交媒体的咨询提出回应，强调内容监管与平台责任的重要性。">CCDH responds to UK Government consultation on children’s use of social media</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> Center for Countering Digital Hate | CCDH</span></td><td class="td-date">2026-03-02</td><td class="td-status"><span class="status-badge" style="background:#DBEAFE;color:#1E40AF;">草案/征求意见</span></td><td class="td-summary">CCDH就英国儿童使用社交媒体的咨询提出回应，强调内容监管与平台责任的重要性。</td></tr>
+        <tr class="main-row" data-row-id="r140590324826560" data-date="2026-03-02" data-cat="未成年人保护" data-region="欧洲" data-group="欧洲" data-impact="2" style="border-left:3px solid #6EE7B7;"><td class="td-region">欧洲</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">欧洲就社交媒体与AI聊天机器人儿童保护措施征意见</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMi6wFBVV95cUxNVnpqRnVfSVhJX1JiaGNScUZiTmctalRHM1FrcTNLNWY4bno5MFE4UmR5WktFZ2NqTGl5SUN0RC1mQ2JsRTZvbmRoaDVkZncyaWZmYk9yZTVzSXJweENDWm11cWZ5Ni1Fbmd6MVFMNXJaT2RWTjljbVFPbVlkb0JPMkFmSUFlWnJaQThES1hQbDdCTE82MGpwTzRpWlpPdkYxQWpMR1N5dXdRTUdJYTZJVFhpdkxQYzA3MENEdGk4OVNpNjQ0ZEVIZVVGWVc2RnNsWk84UUFHdFlnRnlSbnp5a0NwSnpqVzRTU0Vv?oc=5" target="_blank" rel="noopener" title="欧洲监管机构发布征询意见稿，拟推出重大措施保护儿童在社交媒体、游戏平台和AI聊天机器人上的安全。">Landmark consultation seeks views on major measures to protect children on social media, gaming platforms and AI chatbots</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> GOV.UK</span></td><td class="td-date">2026-03-02</td><td class="td-status"><span class="status-badge" style="background:#DBEAFE;color:#1E40AF;">草案/征求意见</span></td><td class="td-summary">欧洲监管机构发布征询意见稿，拟推出重大措施保护儿童在社交媒体、游戏平台和AI聊天机器人上的安全。</td></tr>
+        <tr class="main-row" data-row-id="r140590324839168" data-date="2026-02-22" data-cat="内容监管" data-region="欧盟" data-group="欧洲" data-impact="2" style="border-left:3px solid #94A3B8;"><td class="td-region">欧盟</td><td class="td-cat"><span class="cat-badge" style="background:#E2E8F0;color:#334155;border:1px solid #94A3B8;">内容监管</span></td><td class="td-title"><span class="td-title-zh">[欧盟] 欧盟多国2025年加强游戏 Loot Box 监管</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMirwFBVV95cUxNWTNqeGRwSndjMDJ5ZnlFZEhGbVRaQVB1d2JKMXUxX2hQTmNzaGdQMnVDT2x2UEVXSFB0dHNpTE5nNU1pT2VmcTVxOU9scGhoeFE0ZGZ4NlM3blZCMGxURmUxUEVOTnp6WHc1a0RiUVcyRHdiR0h6OEtnV1hFbV9fZ0hsWUhXQlFNSGRrQV9lZjFjMGVSYW1lcmh0bVdKVy04YTB3Q2loTk9YSzlzSU1R?oc=5" target="_blank" rel="noopener" title="欧盟多国针对游戏 Loot Box 机制提出更严格监管要求，拟立法规范其概率透明度及消费者保护措施。">Several EU Countries Have Introduced Stricter Regulations on Loot Boxes in Games in 2025</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> SiegeGG</span></td><td class="td-date">2026-02-22</td><td class="td-status"><span class="status-badge" style="background:#E2E8F0;color:#334155;">已提案</span></td><td class="td-summary">欧盟多国针对游戏 Loot Box 机制提出更严格监管要求，拟立法规范其概率透明度及消费者保护措施。</td></tr>
+        <tr class="main-row" data-row-id="r140590324831808" data-date="2026-02-16" data-cat="未成年人保护" data-region="英国" data-group="欧洲" data-impact="2" style="border-left:3px solid #6EE7B7;"><td class="td-region">英国</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">[英国] 英国拟加强AI聊天机器人儿童在线安全监管</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMinwFBVV95cUxQcEpzcEY2QTNVdUpSSldXd09EUDRLX18wUU5hUkNjRVBtSEozbFQtOEZEbGt6U0F2Q3dIZkVxMDk3Y2RsQ3JuaGV5QmxubUNuTTFVNEp5YnRGN0c2cWxaYXB5Q1lqNjZOSE1teTFtQ1QxSTBIV3BodnBMUnNzdVdFUXNSWWJYNlZyLXVwVWRoSW5OcWJYcVk2UWFxSVRod03SAaQBQVVfeXFMTXVIOEZoRUFhUWlEbnB4YXRxR3pRWlFWQWpTRnJYbDl1RVVLZmo5dm9pUVF6aFpzSEJlWDYtek5EVllTZGxqelhWdEg3S0R1RDJBV082U0JQWnRTLVJGaHhNM003RnJwdUhWaWVwYXRTa2dGTEtaS3JnVWluZS1nWjVIZWM4MWg3MEpSLTF4WE9HTmRJRjV1dnFsNHdGOEZXNXpnZHc?oc=5" target="_blank" rel="noopener" title="英国针对儿童在线安全推出新监管措施，要求AI聊天机器人企业遵守更严格规定，以保障未成年人安全。">AI chatbot firms face stricter regulation in online safety laws protecting children in the UK</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> CNBC</span></td><td class="td-date">2026-02-16</td><td class="td-status"><span class="status-badge" style="background:#E0E7FF;color:#3730A3;">立法进行中</span></td><td class="td-summary">英国针对儿童在线安全推出新监管措施，要求AI聊天机器人企业遵守更严格规定，以保障未成年人安全。</td></tr>
+        <tr class="group-row" data-group="北美"><td colspan="6" class="group-header">🌎 北美<span class="group-count">12 条</span></td></tr>
+        <tr class="main-row" data-row-id="r140590324838400" data-date="2026-03-05" data-cat="未成年人保护" data-region="美国" data-group="北美" data-impact="2" style="border-left:3px solid #6EE7B7;"><td class="td-region">美国</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">[美国] 美国 FTC 放缓社交媒体监管 承认4小时以上上网儿童占比近20%</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMiogFBVV95cUxOMTZDTzBXbFY4ejA3a091YURROWtWbTVsdHNnTFBWSmFCV1ZiSlpwZWtXN3QyN2t3cjczdVI3RnA4R3NHWGxYRm9lT25qcExwNTFzSjhxSi1FWDBhREVpX0Y2TGx2dmpWUi16RXlIcldMOFRZd2hycEZRSjg5QURoNHdwOXRYb0lhVkdEajZNbDZvM2RlNDhOUjczNkN2UmM1VlE?oc=5" target="_blank" rel="noopener" title="美国 FTC 调整监管策略，承认大量儿童长时间上网，推动更针对性的儿童在线保护措施。">Congress Introduces Landmark Bipartisan Bill to Protect Children Online</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> House.gov</span></td><td class="td-date">2026-03-05</td><td class="td-status"><span class="status-badge" style="background:#E2E8F0;color:#334155;">已提案</span></td><td class="td-summary">美国 FTC 调整监管策略，承认大量儿童长时间上网，推动更针对性的儿童在线保护措施。</td></tr>
+        <tr class="main-row" data-row-id="r140590324832384" data-date="2026-03-05" data-cat="未成年人保护" data-region="全球" data-group="北美" data-impact="1" style="border-left:3px solid #6EE7B7;"><td class="td-region">全球</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">美国推动在线安全立法要求应用商店实施年龄验证</span><span class="td-title-orig"><a href="https://www.theverge.com/policy/890367/house-lawmakers-online-safety-bills-kids-act" target="_blank" rel="noopener" title="美国立法者通过多项法案，要求应用商店实施年龄验证以保护未成年人在线安全。">Lawmakers just advanced online safety laws that require age verification at the app store</a></span><br><span class=td-source><span class="tier-badge" style="background:#FFF7ED;color:#9A3412;border:1px solid #FED7AA;">行业</span> The Verge</span></td><td class="td-date">2026-03-05</td><td class="td-status"><span class="status-badge" style="background:#D97706;color:#FFFFFF;">立法动态</span></td><td class="td-summary">美国立法者通过多项法案，要求应用商店实施年龄验证以保护未成年人在线安全。</td></tr>
+        <tr class="main-row" data-row-id="r140590324826496" data-date="2026-03-05" data-cat="未成年人保护" data-region="美国" data-group="北美" data-impact="1" style="border-left:3px solid #6EE7B7;"><td class="td-region">美国</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">美国堪萨斯州争夺应用商店年龄验证立法影响力</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMiwAFBVV95cUxPWk1keE50azJQbUZ4RXRrenJqR0xhSzhKYTFaWlkxTjVlaEpzbWU2eG9HY0NWcndyM1BZMFlNekJmX01pbFAxaFpEblNCb2R0VUcwVm02VTItaHBGbWhIOEQzTUduM2pMWi01dlViVjc0bWUtcVJ3ZkJZcE5xU1hHOV9yVTF2bE1HTlBja21QaEJVUGg2MWtzVUlDaGt1cE53aG12UGptNU5ScGFvM3NnTDdCRm0xeS1OV2xVY0p6ekI?oc=5" target="_blank" rel="noopener" title="美国堪萨斯州拟推行应用商店年龄验证法规，科技公司竞相影响政策制定。">Tech companies vie for influence over Kansas app store age verification legislation</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> Kansas Reflector</span></td><td class="td-date">2026-03-05</td><td class="td-status"><span class="status-badge" style="background:#D97706;color:#FFFFFF;">立法动态</span></td><td class="td-summary">美国堪萨斯州拟推行应用商店年龄验证法规，科技公司竞相影响政策制定。</td></tr>
+        <tr class="main-row" data-row-id="r140590324842432" data-date="2026-03-05" data-cat="未成年人保护" data-region="美国" data-group="北美" data-impact="1" style="border-left:3px solid #6EE7B7;"><td class="td-region">美国</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">美国推动KIDS法案 加强未成年人在线保护</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMid0FVX3lxTE1ucFl0Q2duWmtURkloc3puVi1ONFJ4bWc0VnBWTE0yNURYS1VUeTQyTERtdTRrLW9DOXN2YnF1NFNEbEtJWmpoMGFBUzJwemRCMmVzVmk4d3RobS00VGtMQ2pvSXdsWi1VYXlndXJtV3hITG9Ick9N?oc=5" target="_blank" rel="noopener" title="美国国会推动KIDS法案，旨在加强对未成年人及青少年的在线安全监管。">Chairman Guthrie Delivers Remarks Encouraging the Advancement of His KIDS Act to Safeguard Children and Teens Online</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> House.gov</span></td><td class="td-date">2026-03-05</td><td class="td-status"><span class="status-badge" style="background:#D97706;color:#FFFFFF;">立法动态</span></td><td class="td-summary">美国国会推动KIDS法案，旨在加强对未成年人及青少年的在线安全监管。</td></tr>
+        <tr class="main-row" data-row-id="r140590324842240" data-date="2026-03-03" data-cat="未成年人保护" data-region="全球" data-group="北美" data-impact="1" style="border-left:3px solid #6EE7B7;"><td class="td-region">全球</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">美国立法机构讨论年龄验证是否适用于视频游戏</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMivAFBVV95cUxPZERuV1NWYVMzSExjM3BoeV9LWEdhV0d0T0NfRzB1LWFsODN2eUVkSUlDSW11Vm5JOUViU2Z6OE1FdDFXV096dm5RaFBQRUtkQXgzcXA3Vkx6YTdoQkxEZlBVeU1Iak1YUXFaU2F2RnM5LV9ZbTlOWUl6cE1nSm1kLUMtUFcyM2Z2aUhOS1NMZTladEhSN1dFNmttUWRwZW14OHV2OHZfQmhFZmdqelJmZE9PVzNGelV2OURvdA?oc=5" target="_blank" rel="noopener" title="美国立法者探讨年龄限制是否应扩展至视频游戏领域，以加强未成年人网络保护。">Please let me in! Do age restrictions on social media apply to video games? Part 2</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> Faculteit Rechtsgeleerdheid en Criminologische Wetenschappen</span></td><td class="td-date">2026-03-03</td><td class="td-status"><span class="status-badge" style="background:#D97706;color:#FFFFFF;">立法动态</span></td><td class="td-summary">美国立法者探讨年龄限制是否应扩展至视频游戏领域，以加强未成年人网络保护。</td></tr>
+        <tr class="main-row" data-row-id="r140590324841728" data-date="2026-03-02" data-cat="未成年人保护" data-region="美国" data-group="北美" data-impact="2" style="border-left:3px solid #6EE7B7;"><td class="td-region">美国</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">美国拟设立基金保障儿童在线安全</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMi0gFBVV95cUxNcE83elN1OXVnbW15MlNwZ3d0R2cxY2RyUWpnTHk2U0RCZHZEVmVqdk1GTzFGMGxvNVp2amJIZUdYUkFVRi1XRVlMcERSMU1sdmtlLVB3ZDkyZ2RRNnVrOGVNWFQ3VTVvTlM4eWpHT2pHLWllZ2RCMWJsQ21CXzBVU2dNZ3l4bWxPUHZNQlVELUFzZWhkVWZsN2pNaHNOaXRmdENPbnF4Ul9pWWx2LUpVaFduZ1RpajBXa184SDhFLU9tM1VERkUzQWgwemx5eXZOLWc?oc=5" target="_blank" rel="noopener" title="美国拟通过立法设立专项基金，以加强儿童在线安全防护，提升平台对未成年人保护的责任要求。">Legislation proposes fund safeguarding children’s online safety</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> Main Street Media of Tennessee</span></td><td class="td-date">2026-03-02</td><td class="td-status"><span class="status-badge" style="background:#E2E8F0;color:#334155;">已提案</span></td><td class="td-summary">美国拟通过立法设立专项基金，以加强儿童在线安全防护，提升平台对未成年人保护的责任要求。</td></tr>
+        <tr class="main-row" data-row-id="r140590324841984" data-date="2026-02-27" data-cat="未成年人保护" data-region="美国" data-group="北美" data-impact="2" style="border-left:3px solid #6EE7B7;"><td class="td-region">美国</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">德州App Store案件或重塑儿童安全法规</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMikwFBVV95cUxQRk40c1N0U29UY0IzODNTRkdLamRjWFJ6QndDejBidW9PLWt5Vy1uN2UyRE1CVk8xMXJvOElrRS15UzRGWmdaY1BsWVhsckthX0ZXZjVCR2Q0aHlFaEdpaXhEUi0xaXM1NndVcU1DUHRuQll2WUdQYkRwb21heExnLWdoRFY1aG1lc3FBMEMtQ0E4ckXSAZgBQVVfeXFMT0tFaVpZdlUxN2M1MF9GZ25PRy04TEV0LW9XOFhzSGx4dGRvbnhnbnVzUVFEZmZSR19NRl85Q3VVSnF1U0JmWlVzcjh2VGVuZzhsbExJbjQzQVNRbnFyQk1Ta2RHczlIUjctLWJWRHpBb1ZiV3hsaTViMlVzQW92NW9TWHZ2c2hBZnFtN2JfbG9QLURLdFVqYzQ?oc=5" target="_blank" rel="noopener" title="德州App Store案件引发关注，或将推动相关立法强化儿童在线安全监管，针对平台内容和用户数据保护提出新要求。">How a Texas App Store Case Could Reshape Child Safety Laws</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> The National Law Review</span></td><td class="td-date">2026-02-27</td><td class="td-status"><span class="status-badge" style="background:#E0E7FF;color:#3730A3;">立法进行中</span></td><td class="td-summary">德州App Store案件引发关注，或将推动相关立法强化儿童在线安全监管，针对平台内容和用户数据保护提出新要求。</td></tr>
+        <tr class="main-row" data-row-id="r140590324840128" data-date="2026-02-27" data-cat="未成年人保护" data-region="美国" data-group="北美" data-impact="2" style="border-left:3px solid #6EE7B7;"><td class="td-region">美国</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">[美国] 美国国会引入保护儿童在线的 bipartisan 法案</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMikgFBVV95cUxQcVl2RUxpTkFWZkxzRGFzNVBTWFZXWjRPRkNvaGxSUG9pVjdZZWxuRjMtU2toS2RndHNLZ0pOX3NzU3lOLWt5RzNDTmZWbFd0NE9xaUpxSzlYOFNLNEhXSERoeVRoS0U5LXF5WFNna21LOG9UVHdoY0o0VVdnU2NLX2xNQmxEcGVicWQ5MUZLRlhLdw?oc=5" target="_blank" rel="noopener" title="美国国会提出重要法案，旨在加强儿童在线安全，涵盖内容监管与数据保护要求。">FTC backs off social media regulation despite nearly 20% of children who are online for 4+ hours</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> Fortune</span></td><td class="td-date">2026-02-27</td><td class="td-status"><span class="status-badge" style="background:#E2E8F0;color:#334155;">已提案</span></td><td class="td-summary">美国国会提出重要法案，旨在加强儿童在线安全，涵盖内容监管与数据保护要求。</td></tr>
+        <tr class="main-row" data-row-id="r140590324838720" data-date="2026-02-27" data-cat="内容监管" data-region="美国" data-group="北美" data-impact="1" style="border-left:3px solid #94A3B8;"><td class="td-region">美国</td><td class="td-cat"><span class="cat-badge" style="background:#E2E8F0;color:#334155;border:1px solid #94A3B8;">内容监管</span></td><td class="td-title"><span class="td-title-zh">纽约州将 Valve Loot Box 判为非法赌博</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMijAFBVV95cUxOMGxhTlFkNWRnaGIyTVE4TW81MWRfcy1NbG1vWkQ0akxjQk1tWHZOTFJ0TGVvTktySXZzdm83NHViVW9uZzVtaFlnZW1GbzdyMExTZTBVLWZwZHVENGpkV1Y0TFRyU01OdVN3TlBob0NYeGdOYWVycFZJSHJHQ0ZHWjhQdXlXX0NjZDBIRNIBkgFBVV95cUxPWXFZZGh0YjZyQV84eDBILV9DSjM1MW9XVkVvdlVobVBLck9IeHVyZzVpTEhmQ0FQbERYb2NoWHNZM3QtSkhGYTFCc3g0YTNGSEplUVVSckZfdkxTaGNTNjNlc2k2bHc4ajdGNHBXLVhFcHBxRHVkWTBBb3Z2c19ia0VQVXBrdEZqVUJrOHNWOHpGZw?oc=5" target="_blank" rel="noopener" title="纽约州拟将游戏 Loot Box 机制认定为非法赌博，要求公司遵守相关法律并承担法律责任。">New York Targets Valve&#x27;s Loot Boxes as Illegal Gambling</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> The National Law Review</span></td><td class="td-date">2026-02-27</td><td class="td-status"><span class="status-badge" style="background:#D97706;color:#FFFFFF;">立法动态</span></td><td class="td-summary">纽约州拟将游戏 Loot Box 机制认定为非法赌博，要求公司遵守相关法律并承担法律责任。</td></tr>
+        <tr class="main-row" data-row-id="r140590324835456" data-date="2026-02-26" data-cat="未成年人保护" data-region="北美" data-group="北美" data-impact="2" style="border-left:3px solid #6EE7B7;"><td class="td-region">北美</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">[美国] FTC调整儿童在线保护执法力度</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMixgFBVV95cUxON1pidGpJRXAwUVdyWVV0dVpmcURlekgxZXBPX0lubC1nVE01Zl9ISkNONF9MZDdNVm1ZQ3QzQnlFWjA5SDNuWWRaT2gzUXJtTThRZDJpU0ZoYjc0VHBfeEFzdURuQjBGUllLakx2cTBIYWU1ZnlKWjV1T3BQQUFHcDFKWDBWQWFieGg0bldubnQ5NTYxcncxNUphQmprZmx2TkRCcERzUzNRbERPZ2FsdUQ5ZU5sYmd0dC1wMkpSeHJRaU1QeUE?oc=5" target="_blank" rel="noopener" title="美国FTC放宽儿童在线保护规则执法，但仍以保护未成年人为主要目标。">FTC Softens Enforcement of Rule Protecting Children Online, Ostensibly to Protect Children Online</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> Gizmodo</span></td><td class="td-date">2026-02-26</td><td class="td-status"><span class="status-badge" style="background:#FEE2E2;color:#991B1B;">执法动态</span></td><td class="td-summary">美国FTC放宽儿童在线保护规则执法，但仍以保护未成年人为主要目标。</td></tr>
+        <tr class="main-row" data-row-id="r140590324834816" data-date="2026-02-25" data-cat="未成年人保护" data-region="美国" data-group="北美" data-impact="3" style="border-left:3px solid #6EE7B7;"><td class="td-region">美国</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">[美国] 美国 FTC 发布 COPPA 政策声明鼓励使用年龄验证技术</span><span class="td-title-orig"><a href="https://www.ftc.gov/news-events/news/press-releases/2026/02/ftc-issues-coppa-policy-statement-incentivize-use-age-verification-technologies-protect-children" target="_blank" rel="noopener" title="FTC 明确表示不会对某些仅用于年龄验证的网站和服务运营商采取执法行动。">FTC Issues COPPA Policy Statement to Incentivize the Use of Age Verification Technologies to Protect Children Online</a></span><br><span class=td-source><span class="tier-badge" style="background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE;">官方</span> FTC News</span></td><td class="td-date">2026-02-25</td><td class="td-status"><span class="status-badge" style="background:#FEE2E2;color:#991B1B;">执法动态</span></td><td class="td-summary">FTC 明确表示不会对某些仅用于年龄验证的网站和服务运营商采取执法行动。</td></tr>
+        <tr class="main-row" data-row-id="r140590324826624" data-date="2026-02-11" data-cat="未成年人保护" data-region="美国" data-group="北美" data-impact="1" style="border-left:3px solid #6EE7B7;"><td class="td-region">美国</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">40州检察长警示KOSA法案未充分保护儿童网络安全</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMieEFVX3lxTE0tSDUyZGV6d1RtX3hVR1A1aUNYRDlaZjlsWndITk44Mk04X284Xy1kb0F1Mm5yUE0yM3BxbTdGZmNQSXRuaXRxZzZ6cy0yU2N2R0xwMUNrcEpBckZhSjE1VnJISEVhMFdDSUlKWF9jbEpqczUyYy03eg?oc=5" target="_blank" rel="noopener" title="美国州检察长指出KOSA法案未能有效保障儿童在线安全，引发对立法不足的担忧。">40 state AGs warn House KOSA bill falls short of protecting children online</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> The Record from Recorded Future News</span></td><td class="td-date">2026-02-11</td><td class="td-status"><span class="status-badge" style="background:#D97706;color:#FFFFFF;">立法动态</span></td><td class="td-summary">美国州检察长指出KOSA法案未能有效保障儿童在线安全，引发对立法不足的担忧。</td></tr>
+        <tr class="group-row" data-group="日韩台"><td colspan="6" class="group-header">🌸 日韩台<span class="group-count">2 条</span></td></tr>
+        <tr class="main-row" data-row-id="r140590324827776" data-date="2026-03-05" data-cat="数据隐私" data-region="韩国" data-group="日韩台" data-impact="2" style="border-left:3px solid #93C5FD;"><td class="td-region">韩国</td><td class="td-cat"><span class="cat-badge" style="background:#DBEAFE;color:#1E40AF;border:1px solid #93C5FD;">数据隐私</span></td><td class="td-title"><span class="td-title-zh">韩国拟立法要求服务转移时传递用户信息</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMiWEFVX3lxTE4wWmQ2TVBMRnRnWGRnMmt0UVFDWlZTYy1IejdUWDlfWnRDNTA0X0N5aHA5bDRYeW83NEtycmxzd21uVHZCVnRlZ1RDVmlFME50bVdnamJJbG_SAVtBVV95cUxNd1VZX19UaW5MSS1ualdmUnBQdzFCVFMwbngtc0hzUF9zdHRsMVlPRjlzVDRoREtyV0lSdV9Tb3ctTUhFNWVEUmlDcU00Vm9JN1hWWjZ6MENHS1FN?oc=5" target="_blank" rel="noopener" title="韩国拟通过新法案要求企业在服务转移时必须传递用户信息，以加强数据保护和用户隐私管理。">서비스 이전 시 유저 정보 넘기도록 의무화하는 법안 발의</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> 게임메카</span></td><td class="td-date">2026-03-05</td><td class="td-status"><span class="status-badge" style="background:#E2E8F0;color:#334155;">已提案</span></td><td class="td-summary">韩国拟通过新法案要求企业在服务转移时必须传递用户信息，以加强数据保护和用户隐私管理。</td></tr>
+        <tr class="main-row" data-row-id="r140590324842112" data-date="2026-02-24" data-cat="内容监管" data-region="韩国" data-group="日韩台" data-impact="1" style="border-left:3px solid #94A3B8;"><td class="td-region">韩国</td><td class="td-cat"><span class="cat-badge" style="background:#E2E8F0;color:#334155;border:1px solid #94A3B8;">内容监管</span></td><td class="td-title"><span class="td-title-zh">[韩国] 韩国拟对 Loot Box 概率披露违规施以营收处罚</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMizAFBVV95cUxOYTk5eURwWUVjbWVmLTRwb0V5MmowelhnaVhIUmxJVjBRNGFqQjl2b04tajhxak1oaDU1TFpDU3d4THVGeTlPZDh1emhvS29JN1J2MmI1ajZaSmhwUXh5UUFRYmRDQlBLT29zbnhkQjl3eURDcEdHMWVCZnc4em5PUUlMcjYwMzJhS3RoUENDOHRQanlKckZSY25hclJWYmJhWHQ1Zi1qMjVUZEI3Q1hCT19QRWppWVhRMm8zNnBQb29oRl9FR2FuUXh2WUU?oc=5" target="_blank" rel="noopener" title="韩国监管机构拟对未按规定披露 Loot Box 概率的游戏公司处以营收比例处罚，强化内容合规监管。">Loot Box Crackdown? South Korea Eyes Revenue Penalties for Probability Disclosure Breaches</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> Inven Global</span></td><td class="td-date">2026-02-24</td><td class="td-status"><span class="status-badge" style="background:#D97706;color:#FFFFFF;">立法动态</span></td><td class="td-summary">韩国监管机构拟对未按规定披露 Loot Box 概率的游戏公司处以营收比例处罚，强化内容合规监管。</td></tr>
+        <tr class="group-row" data-group="其他"><td colspan="6" class="group-header">🌐 其他<span class="group-count">3 条</span></td></tr>
+        <tr class="main-row" data-row-id="r140590324842176" data-date="2026-03-04" data-cat="平台政策" data-region="全球" data-group="其他" data-impact="1" style="border-left:3px solid #FDA4AF;"><td class="td-region">全球</td><td class="td-cat"><span class="cat-badge" style="background:#FFE4E6;color:#9F1239;border:1px solid #FDA4AF;">平台政策</span></td><td class="td-title"><span class="td-title-zh">[全球] Google调整Android应用商店规则，应对全球反垄断压力</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMiswFBVV95cUxPcUxWVDRzWXlCUkF3Rm9vVTJvNk5LZ19BN0l0MjcxdTJvNnJRU1NjakVRYXBpRzB0Mm5WR0I0R0J5S0FuUUZzUEVJX3JBOTdJLVdPOVF2eENldDQySU9uUEJ6NDg1T2s4Zi1uc3loWVdoNzBtNTBsNlJXZV9Ja1IxdHo5a01tbHRHcUFNZ3I2bkRpLWh6bmhJMkw2ZnlZY2p4RE81dkg3cXhKZlJLbDQ2UkFzSQ?oc=5" target="_blank" rel="noopener" title="Google在全球反垄断压力下调整Android应用商店规则，降低费用并加强合规要求。">Google Revamps Android App Store Rules, Cuts Fees Amid Global Antitrust Pressure</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> PYMNTS.com</span></td><td class="td-date">2026-03-04</td><td class="td-status"><span class="status-badge" style="background:#D97706;color:#FFFFFF;">立法动态</span></td><td class="td-summary">Google在全球反垄断压力下调整Android应用商店规则，降低费用并加强合规要求。</td></tr>
+        <tr class="main-row" data-row-id="r140590324826176" data-date="2026-03-01" data-cat="未成年人保护" data-region="其他" data-group="其他" data-impact="2" style="border-left:3px solid #6EE7B7;"><td class="td-region">其他</td><td class="td-cat"><span class="cat-badge" style="background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;">未成年人保护</span></td><td class="td-title"><span class="td-title-zh">政府就儿童在线安全咨询，拟审查 AI 聊天机器人</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMitAFBVV95cUxPaG1WUVpzQlgtazRBN1VGTG5USllIdTNRbUxMaEZxTDZORUlDclN4MUUyZ1o3V0xialZKenpjX1ZmZkVJU0RXc2ZUMWNZWnhDaEhjcjVjNnF0ZzdnWU94WmUyUVpCM1FPNExaM0VlOEVVTkFEc1IwdDNtY3VtODB2dG81X1VaamRHS2NVQmI0QlAzdG1YR2c4OE55alNqeW5xTTJxdmc3MGZ2T1N3LVc0MDVwN0I?oc=5" target="_blank" rel="noopener" title="政府就儿童在线安全进行咨询，计划评估 AI 聊天机器人对未成年人的潜在影响。">Government consultation on children’s online safety to look at AI chatbots</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> PA Media</span></td><td class="td-date">2026-03-01</td><td class="td-status"><span class="status-badge" style="background:#DBEAFE;color:#1E40AF;">草案/征求意见</span></td><td class="td-summary">政府就儿童在线安全进行咨询，计划评估 AI 聊天机器人对未成年人的潜在影响。</td></tr>
+        <tr class="main-row" data-row-id="r140590324827840" data-date="2026-02-25" data-cat="平台政策" data-region="全球" data-group="其他" data-impact="1" style="border-left:3px solid #FDA4AF;"><td class="td-region">全球</td><td class="td-cat"><span class="cat-badge" style="background:#FFE4E6;color:#9F1239;border:1px solid #FDA4AF;">平台政策</span></td><td class="td-title"><span class="td-title-zh">Apple改善App Store年龄验证符合新全球法规</span><span class="td-title-orig"><a href="https://news.google.com/rss/articles/CBMi2gJBVV95cUxQcW9vRVJXdkc1MDVCa0hhQlZpOHhjeWFZc3puelpPcm40UzJ5d0l0Y2t6clg1X2x1d216NTN3a2k3SlBxTXF3NE5CVm1nMmRGX1ppRkZVaGplblRyemtudkhVOGUyVlE0MXo0aUYyZWd4ZnVseDVVbDJxMXpQNUptMkphel91eFNjTEtJZzlFcHdGenhER1lXM2VZYWVFZTJuZE1sdXZzaVRVZzQ0NEVIUE1PWGJyT3lTQ2t1ZHRsQ0lacGRmSVpUUzh3MHplaFc5X2oxbXBQMG5KVGdOVDRQVy10NHJBVnpsTHhobjVvVjZDMnRwdTNJd095VGpaRS1XbjRSWk9zcmlnNFRvTUw0UWxDNktiblhPZV9xWlR1ckFmY0tnTmRPbE9MT21YbW9fOEFRaXUzZEd4TV9pemVYZm1Wc0loRVpjOW01NWVuLTFQREszcTQ0M0pB0gHfAkFVX3lxTE0wczhzSy15enQzR2U3d0ptdFZFR1J0eTlmNUVBcExzS3JNNk5GTWpULW5ITTZfc201Mi1QTWNoTzZzb2FoaFYtUlMtN2NYakR0NHFDTWkyQ2ZmNG1MQzMyWFRzby1RMFRuMXp4OVBuRmotV1UxNDRTcmNnV2ZtMmZIRUNCY1FoRUl5dXhQeTRYMjFfZVQzSFpULW5iQTM0M2pnazFWaTk4US1qWjdXaXc4NVlnWWlRS0J5QVBHM1BTRkduX2NOY0liN3d6MmpuQVlJWTlPSzljdmJGQ3dJYkJ2ejhLUjVNRVQwSVEta2l4SnRiZTFHX0FxS3BRbEZMVjVpeTVMRllJRnR3VXlMS3lqTnZ4RGJwRGJvd2lWVlVsN2o1VFRYRjV5b3FqdTVnbE9TcDEwUGlMSHRWLVJtNTFnU2J5LWpoWWJYT0Q2RFd1X2hWbUE3Vkt3cld5eExPRQ?oc=5" target="_blank" rel="noopener" title="Apple为符合新兴全球市场法规，提升App Store内的年龄确认机制，以保障用户安全。">Apple、世界市場の新しい法律に準拠するために App Store での年齢確認を改善</a></span><br><span class=td-source><span class="tier-badge" style="background:#F8FAFC;color:#475569;border:1px solid #E2E8F0;">媒体</span> Mix Vale</span></td><td class="td-date">2026-02-25</td><td class="td-status"><span class="status-badge" style="background:#D97706;color:#FFFFFF;">立法动态</span></td><td class="td-summary">Apple为符合新兴全球市场法规，提升App Store内的年龄确认机制，以保障用户安全。</td></tr>
+      </tbody>
+    </table>
+    <div class="no-data" id="noData">暂无匹配数据</div>
+  </div>
+
+  <!-- 页脚 -->
+  <div class="footer">Bilibili Legal &nbsp;·&nbsp; 全球互联网合规监控 &nbsp;·&nbsp; 仅供内部参考</div>
+
+</div>
+<script>
+(function() {
+  // 初始化地区分组下拉
+  const rows = document.querySelectorAll('#mainTable tbody .main-row');
+  const groups = new Set(), cats = new Set(), statuses = new Set();
+  rows.forEach(r => {
+    if (r.dataset.group) groups.add(r.dataset.group);
+    if (r.dataset.cat)   cats.add(r.dataset.cat);
+    const badge = r.querySelector('.status-badge');
+    if (badge) statuses.add(badge.textContent.trim());
+  });
+
+  // 按预设顺序填充地区下拉
+  const groupOrder = ["东南亚","亚太","中东","欧洲","北美","南美","日韩台","其他"];
+  const fGroup = document.getElementById('fGroup');
+  groupOrder.forEach(g => {
+    if (groups.has(g)) {
+      const o = document.createElement('option');
+      o.value = g; o.textContent = g; fGroup.appendChild(o);
+    }
+  });
+
+  const fill = (sel, vals) => {
+    [...vals].filter(Boolean).sort().forEach(v => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v; sel.appendChild(o);
+    });
+  };
+  fill(document.getElementById('fCat'), cats);
+  fill(document.getElementById('fStatus'), statuses);
+  updateCount();
+})();
+
+function applyFilters() {
+  const group  = document.getElementById('fGroup').value;
+  const cat    = document.getElementById('fCat').value;
+  const status = document.getElementById('fStatus').value;
+  const kw     = document.getElementById('fKeyword').value.toLowerCase();
+
+  const rows = document.querySelectorAll('#mainTable tbody .main-row');
+  const groupVisible = {};
+  let visible = 0;
+
+  rows.forEach(r => {
+    let show = true;
+    if (show && group  && r.dataset.group !== group) show = false;
+    if (show && cat    && r.dataset.cat   !== cat)   show = false;
+    if (show && status) {
+      const badge = r.querySelector('.status-badge');
+      if (!badge || badge.textContent.trim() !== status) show = false;
+    }
+    if (show && kw && !r.textContent.toLowerCase().includes(kw)) show = false;
+    r.style.display = show ? '' : 'none';
+    // 同步控制展开行
+    const detailRow = document.getElementById('detail-' + r.dataset.rowId);
+    if (detailRow) detailRow.style.display = (show && r.classList.contains('expanded')) ? '' : 'none';
+    if (show) { visible++; groupVisible[r.dataset.group] = true; }
+  });
+
+  // 控制分组 header 显隐
+  document.querySelectorAll('.group-row').forEach(r => {
+    r.style.display = groupVisible[r.dataset.group] ? '' : 'none';
+  });
+
+  updateCount(visible);
+}
+
+function updateCount(n) {
+  const total = document.querySelectorAll('#mainTable tbody .main-row').length;
+  const cnt = (n === undefined) ? total : n;
+  document.getElementById('resultCount').textContent = `显示 ${cnt} / ${total} 条`;
+  document.getElementById('noData').style.display = cnt === 0 ? 'block' : 'none';
+}
+
+// 展开/收起正文
+document.querySelectorAll('.main-row.has-detail').forEach(row => {
+  row.addEventListener('click', function(e) {
+    if (e.target.tagName === 'A') return;
+    const rid = this.dataset.rowId;
+    const detailRow = document.getElementById('detail-' + rid);
+    if (!detailRow) return;
+    const opening = detailRow.style.display === 'none';
+    detailRow.style.display = opening ? '' : 'none';
+    this.classList.toggle('expanded', opening);
+  });
+});
+
+let _sortDir = {};
+function sortTable(col) {
+  const tbody = document.querySelector('#mainTable tbody');
+  const mainRows = [...tbody.querySelectorAll('.main-row')];
+  _sortDir[col] = !_sortDir[col];
+
+  document.querySelectorAll('th').forEach((th, i) => {
+    th.classList.toggle('sorted', i === col);
+    const icon = th.querySelector('.sort-icon');
+    if (icon) icon.textContent = (i === col) ? (_sortDir[col] ? '↑' : '↓') : '⇅';
+  });
+
+  // 按列排序（忽略分组 header 和展开行，排序后重新按分组插入）
+  mainRows.sort((a, b) => {
+    let va = a.cells[col]?.textContent.trim() ?? '';
+    let vb = b.cells[col]?.textContent.trim() ?? '';
+    if (col === 3) return _sortDir[col] ? va.localeCompare(vb) : vb.localeCompare(va);
+    return _sortDir[col] ? va.localeCompare(vb, 'zh') : vb.localeCompare(va, 'zh');
+  });
+
+  // 把分组 header、主行、对应展开行重新排列
+  const groupRows = [...tbody.querySelectorAll('.group-row')];
+  const groupOrder = ["东南亚","亚太","中东","欧洲","北美","南美","日韩台","其他"];
+  tbody.innerHTML = '';
+
+  groupOrder.forEach(grp => {
+    const hdr = groupRows.find(r => r.dataset.group === grp);
+    if (!hdr) return;
+    const grpMainRows = mainRows.filter(r => r.dataset.group === grp);
+    if (grpMainRows.length === 0) return;
+    tbody.appendChild(hdr);
+    grpMainRows.forEach(r => {
+      tbody.appendChild(r);
+      // 同步插入展开行（如果存在）
+      const detailRow = document.getElementById('detail-' + r.dataset.rowId);
+      if (detailRow) tbody.appendChild(detailRow);
+    });
+  });
+}
+</script>
+</body>
+</html>
