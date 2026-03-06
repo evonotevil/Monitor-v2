@@ -24,7 +24,7 @@ reports/weekly_*.html
 reports/weekly_*.pdf
 reports/weekly_*.md
 # generate_pdf.py 输出的带日期命名 PDF（latest.pdf 是唯一入库版本）
-reports/Lilith-Legal-Compliance-Report-*.pdf
+reports/Bilibili-Legal-Compliance-Report-*.pdf
 
 # 始终保留 latest 文件 和 每周存档目录
 !reports/latest.html
