@@ -2,7 +2,7 @@
 翻译/摘要模块
 
 优先路径：Groq API（OpenAI 兼容格式，免费）
-  - 标题格式：[地区/国家] 核心事件，专有名词保留英文（Valve/Loot Box/FTC 等）
+  - 标题格式：[地区/国家] 核心事件，专有名词保留英文（TikTok/Meta/GDPR 等）
   - 摘要格式：监管对象 + 具体限制 + 违规后果，30-50 字，内容须与标题显著不同
 
 回退路径：Google Translate（LLM_API_KEY 未配置时）
@@ -53,12 +53,6 @@ _cache: dict = {}
 # 修正 AI 生成中常见的音译/意译错误，将其替换回受保护的英文原文
 
 _TERM_CORRECTIONS: dict[str, str] = {
-    # Valve
-    "瓦尔维尔": "Valve", "瓦尔弗": "Valve", "瓦尔夫": "Valve", "维尔福": "Valve",
-    # Steam
-    "史蒂姆": "Steam", "史提姆": "Steam",
-    # Epic Games
-    "艾匹克游戏": "Epic Games", "艾匹克": "Epic Games",
     # Loot Box（最常见的错误意译）
     "战利品箱": "Loot Box", "战利品盒": "Loot Box", "战利品包": "Loot Box",
     "掉落箱":   "Loot Box", "收藏箱":   "Loot Box",
@@ -70,13 +64,11 @@ _TERM_CORRECTIONS: dict[str, str] = {
     "迪斯科": "Discord",
     # Twitch
     "推趣": "Twitch",
-    # Roblox（注意：罗布乐思是官方中文名，此处保留英文）
+    # Roblox（未成年保护场景常见）
     "罗布乐思": "Roblox",
     # 货币单位错误音译
     "拉布尔": "卢布", "卢伯": "卢布", "鲁布": "卢布",   # ruble 误译
     "里尔": "雷亚尔",                                   # real (巴西) 误译保护
-    # Battlestate Games（Escape from Tarkov 开发商）
-    "战争状态游戏": "Battlestate Games", "战斗状态": "Battlestate Games",
 }
 
 

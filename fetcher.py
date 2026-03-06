@@ -191,76 +191,117 @@ REGULATORY_SIGNALS = [
     r"\bpolicy\b", r"\bguideline\w*\b", r"\brule\w*\b",
     r"\bdraft\b", r"\bconsultation\b", r"\bproposal\b",
     r"\bFTC\b", r"\bCOPPA\b", r"\bGDPR\b", r"\bCCPA\b", r"\bDSA\b", r"\bDMA\b",
-    r"\bIGAC\b", r"\bGRAC\b", r"\bESRB\b", r"\bPEGI\b", r"\bCERO\b",
-    r"\bOnline Safety Act\b", r"\bKIDS Act\b",
+    r"\bICO\b", r"\bEDPB\b", r"\bOfcom\b", r"\bCMA\b",
+    r"\bOnline Safety Act\b", r"\bKIDS Act\b", r"\bKOSA\b",
     # 日文
     r"規制", r"法律", r"法案", r"条例", r"施行", r"罰則", r"処分", r"義務",
     r"景品表示法", r"資金決済法", r"特商法",
     # 韩文
     r"규제", r"법안", r"법률", r"의무", r"제재", r"개정",
-    r"게임산업진흥법",
 ]
 
-# 必须包含至少一个「游戏/互动娱乐」信号词
-GAME_SIGNALS = [
-    r"\bvideo\s*game\w*\b", r"\bmobile\s*game\w*\b", r"\bonline\s*game\w*\b",
-    r"\bgaming\b",
+# 必须包含至少一个「互联网内容平台」相关信号词
+# 聚焦：内容安全、未成年保护、隐私、版权、支付合规、商业化
+PLATFORM_SIGNALS = [
+    # ── 平台类型 ──────────────────────────────────────────────────────
+    r"\bonline\s*platform\w*\b", r"\bdigital\s*platform\w*\b",
+    r"\bsocial\s*(?:media|network|platform)\b",
+    r"\bstreaming\b",
+    r"\bvideo\s*(?:platform|sharing|streaming|hosting)\b",
+    r"\blive\s*stream\w*\b", r"\bshort.?video\b",
+    r"\bUGC\b",
+    r"\bcontent\s*creator\w*\b",
+    r"\bapp\s*store\b", r"\bgoogle\s*play\b",
+    # ── 知名内容平台（监管场景）────────────────────────────────────────
+    r"\bTikTok\b", r"\bByteDance\b",
+    r"\bYouTube\b", r"\bFacebook\b", r"\bInstagram\b", r"\bMeta\b",
+    r"\bTwitter\b", r"\bNetflix\b", r"\bSpotify\b",
+    r"\bSnapchat\b", r"\bReddit\b", r"\bDiscord\b", r"\bTwitch\b",
+    r"\bLinkedIn\b", r"\bPinterest\b",
+    # ── 支付与变现合规 ────────────────────────────────────────────────
+    r"\bin.?app\s*purchas\w*\b",
+    r"\bvirtual\s*currenc\w*\b",
+    r"\bdigital\s*goods?\b",
     r"\bloot\s*box\w*\b", r"\bgacha\b", r"\bmicrotransaction\w*\b",
-    r"\bin.?app\s*purchas\w*\b", r"\bapp\s*store\b", r"\bgoogle\s*play\b",
-    r"\bplay\s*store\b", r"\bvirtual\s*currenc\w*\b",
-    r"\bminor\w*\b.*\b(?:online|digital|screen)\b",
-    r"\bchildren\b.*\b(?:online|digital|app|internet)\b",
-    r"\bgame\s*(?:developer|publish|industr|compan|rating|age)\w*\b",
-    r"\bgame\b.*\b(?:regulat|law|legislat|ban|restrict|fine|enforc)\b",
-    r"\b(?:regulat|law|legislat|ban|restrict|fine|enforc)\w*\b.*\bgame\b",
-    r"ゲーム", r"ガチャ",
-    r"게임", r"확률형",
+    r"\bsubscription.*(?:auto.?renew|cancel|trap|law|regulat)\b",
+    r"\bdigital\s*payment\b",
+    # ── 未成年人保护 ──────────────────────────────────────────────────
+    r"\bminor\w*\b.{0,60}\b(?:online|digital|platform|internet|social|screen|content|app)\b",
+    r"\bchildren\b.{0,60}\b(?:online|digital|platform|internet|social|app|content|safety)\b",
+    r"\byouth\b.{0,40}\b(?:online|digital|platform|social|screen)\b",
+    r"\bage\s*verif\w*\b",
+    r"\bCOPPA\b", r"\bKOSA\b",
+    r"\bparental\s*control\b",
+    r"未成年", r"青少年.{0,20}(?:网络|平台|保护|上网)",
+    # ── 隐私与数据合规 ────────────────────────────────────────────────
+    r"\bGDPR\b", r"\bCCPA\b", r"\bCPRA\b", r"\bPDPA\b", r"\bLGPD\b", r"\bDPDPA\b",
+    r"\bdata\s*protection\b",
+    r"\bpersonal\s*data\b",
+    r"\bcross.?border.*data\b",
+    r"\bdata.*localiz\w*\b",
+    r"\bprivacy.*(?:platform|online|digital|enforce|fine|law)\b",
+    # ── 内容安全与版权 ────────────────────────────────────────────────
+    r"\bdeepfake\b", r"\bAIGC\b",
+    r"\bcontent\s*(?:moderat\w*|removal|takedown|illegal)\b",
+    r"\bAI.?generat\w*.*content\b",
+    r"\bstreaming.*copyright\b|\bcopyright.*stream\w*\b",
+    r"\bplatform.*copyright\b|\bcopyright.*platform\b",
+    r"\bhate\s*speech\b",
+    r"\billegal\s*content\b",
+    r"内容监管|内容安全|版权.{0,10}平台|平台.{0,10}版权",
+    # ── 平台竞争与治理 ────────────────────────────────────────────────
+    r"\bDSA\b", r"\bDMA\b",
+    r"\bdigital\s*services\s*act\b", r"\bdigital\s*markets\s*act\b",
+    r"\bgatekeeper\b",
+    r"\bthird.?party\s*pay\b",
+    # ── 广告营销合规 ──────────────────────────────────────────────────
+    r"\bdark.?pattern\b",
+    r"\binfluencer.*(?:disclos|law|rule)\b",
+    r"\btargeted.*ad\b",
+    r"\bKOL\b",
+    # ── 亚洲语言平台信号 ─────────────────────────────────────────────
+    r"平台|流媒体|直播|短视频|数据保护|隐私|内容监管",
+    r"プラットフォーム|ストリーミング|配信|プライバシー|著作権",
+    r"플랫폼|스트리밍|개인정보|저작권|미성년",
 ]
 
-# 排除词 - 即使匹配了上面的词，如果标题中大量出现这些词，基本可以判断不是法规新闻
+# 排除词 - 即使匹配了上面的词，如果标题中出现这些词，基本可以判断不是合规新闻
 EXCLUSION_PATTERNS = [
-    r"\breview\b.*\b(?:score|rating|stars?|gameplay)\b",  # 游戏评测
-    r"\breleas\w*\b.*\b(?:date|trailer|gameplay)\b",  # 游戏发布
-    r"\btrailer\b", r"\bgameplay\b", r"\bwalkthrough\b",
-    r"\btournament\b", r"\besports? (?:team|event|match)\b",
-    r"\bsale\b.*\b(?:off|discount|deal)\b",
-    r"\bbest game\w*\b", r"\btop \d+ game\b",
-    r"\bhow to play\b", r"\bgame guide\b",
-    r"\bpatch note\b", r"\bupdate.*(?:v\d|version|season|content)\b",
-    r"\bGemini\b", r"\bCopilot\b", r"\bChatGPT\b",  # AI 产品新闻
-    r"\bSDK\b.*\b(?:release|update|version)\b",  # SDK 更新
-    r"\bAPI\b.*\b(?:release|update|version|new)\b",  # API 更新
-    r"\bWWDC\d*\b", r"\bGoogle I/O\b",  # 开发者大会（含WWDC25/26等）
-    r"@\s*WWDC",                         # @WWDC25 格式
-    r"\bdeveloper tool\b", r"\bXcode\b", r"\bSwift\b", r"\bKotlin\b",
-    # Apple/Google 开发者博客通用噪音（非立法）
-    r"developer activit",                # "developer activities" / "开发者活动"
-    r"最新的开发者活动",                   # 中文"查看我们最新的开发者活动"
-    r"\bjoin us (?:at|in|for)\b",        # 活动邀请
-    r"今天@",                             # "今天@WWDC25：第X天"
-    r"\btech talk\b",                    # Apple Tech Talk
-    r"storefront.*currenc|currenc.*storefront",   # Apple全球定价页（175 storefronts, 44 currencies）
-    r"(?:tax.*price|price.*tax).*(?:\d{2,3}\s*(?:store|market)|storefronts?)",  # Apple价格/税收更新
-    r"应用.*价格.*税收|价格.*税收.*更新|税收.*价格.*更新",  # 中文版苹果价格税收更新
-    r"应用.*税收.*价格|税收.*更新.*店面",  # 中文版苹果税收价格
-    # 博彩/赌场 (casino gambling) 不是游戏行业法规
-    r"\bcasino\b", r"\bsports?\s*bet", r"\bpoker\b", r"\bslot\s*machine\b",
-    r"\bbookie\b", r"\bhorse\s*rac", r"\b赌场\b",
-    r"\bfishing\b.*\b(?:season|rule)\b",  # 钓鱼 (fishing game 误匹配)
-    r"\bNBA\b.*\bfine\b", r"\bNFL\b.*\bfine\b",  # 体育罚款
-    r"\bprediction\s*market\b",  # 预测市场
-    r"\bIAG\b", r"\bInside Asian Gaming\b",  # 博彩行业会议
-    r"\btribal\s*gam", r"\btribal\s*bet",  # 部落博彩
-    r"\bskill\s*game.*(?:ban|legal|tax)\b",  # "技巧游戏"(实为赌博机)
-    r"\bdigital\s*lotter", r"\blottery\s*game\b",  # 数字彩票
-    r"\bPAGCOR\b",  # 菲律宾博彩
-    r"\bwatchOS\b", r"\b64.?bit\s*require\b",  # 纯技术要求
-    r"\bNBA\b", r"\bNFL\b", r"\bNHL\b", r"\bMLB\b",  # 体育联赛
-    r"\bCOMESA\b",  # 非洲区域贸易组织(非游戏)
-    r"\bCleveland\s*Cavaliers\b",
-    r"骑士队",
-    r"\blottery\b",  # 彩票
-    r"\bbetting\b",  # 投注
+    r"\btrailer\b", r"\bgameplay\b", r"\bwalkthrough\b",       # 游戏/影视宣传内容
+    r"\besports?\s*(?:team|event|match|tournament)\b",          # 电竞赛事
+    r"\bpatch\s*note\b",                                        # 游戏补丁说明
+    r"\bgame\s*guide\b", r"\bhow\s*to\s*play\b",               # 游戏攻略
+    r"\bGemini\b", r"\bCopilot\b", r"\bChatGPT\b",             # AI 产品发布（无监管语境）
+    r"\bSDK\b.*\b(?:release|update|version)\b",                 # SDK 更新
+    r"\bAPI\b.*\b(?:release|update|version|new)\b",             # API 更新
+    r"\bWWDC\d*\b", r"\bGoogle\s*I/O\b",                       # 开发者大会
+    r"@\s*WWDC",
+    r"\bdeveloper\s*activit",
+    r"最新的开发者活动",
+    r"\bjoin\s*us\s*(?:at|in|for)\b",
+    r"今天@",
+    r"\btech\s*talk\b",
+    r"storefront.*currenc|currenc.*storefront",                  # Apple 全球定价页
+    r"(?:tax.*price|price.*tax).*(?:\d{2,3}\s*(?:store|market)|storefronts?)",
+    r"应用.*价格.*税收|价格.*税收.*更新|税收.*价格.*更新",
+    r"应用.*税收.*价格|税收.*更新.*店面",
+    # 博彩/赌博
+    r"\bcasino\b", r"\bsports?\s*bet\b", r"\bpoker\b", r"\bslot\s*machine\b",
+    r"\bbookie\b", r"\bhorse\s*rac\b", r"\b赌场\b",
+    r"\bprediction\s*market\b",
+    r"\bIAG\b", r"\bInside\s*Asian\s*Gaming\b",
+    r"\btribal\s*gam\w*", r"\btribal\s*bet\w*",
+    r"\bskill\s*game.*(?:ban|legal|tax)\b",
+    r"\bdigital\s*lotter\w*", r"\blottery\s*game\b",
+    r"\bPAGCOR\b",
+    r"\blottery\b", r"\bbetting\b",
+    # 体育联赛
+    r"\bNBA\b", r"\bNFL\b", r"\bNHL\b", r"\bMLB\b",
+    r"\bCleveland\s*Cavaliers\b", r"骑士队",
+    # 其他纯技术/商业噪音
+    r"\bwatchOS\b", r"\b64.?bit\s*require\b",
+    r"\bCOMESA\b",
+    r"\bfishing\b.*\b(?:season|rule)\b",
 ]
 
 
@@ -268,7 +309,7 @@ def is_legislation_relevant(article: dict) -> bool:
     """
     严格过滤：必须同时满足:
     1. 包含法规/监管行动信号词
-    2. 包含游戏/互动娱乐信号词
+    2. 包含互联网内容平台相关信号词（内容安全/未成年保护/隐私/版权/支付/商业化）
     3. 不匹配排除词模式
     4. 非中国大陆内容
     """
@@ -295,13 +336,13 @@ def is_legislation_relevant(article: dict) -> bool:
     if not has_regulatory:
         return False
 
-    # 必须有游戏信号
-    has_game = False
-    for p in GAME_SIGNALS:
+    # 必须有互联网内容平台信号
+    has_platform = False
+    for p in PLATFORM_SIGNALS:
         if re.search(p, text_lower, re.IGNORECASE):
-            has_game = True
+            has_platform = True
             break
-    if not has_game:
+    if not has_platform:
         return False
 
     return True
@@ -693,9 +734,9 @@ def fetch_and_process(max_days: int = MAX_ARTICLE_AGE_DAYS) -> List[LegislationI
             unique_items.append(item)
     logger.info(f"去重后: {len(unique_items)} 条")
 
-    # 3. 严格过滤: 法规+游戏+排除中国大陆+排除噪音+时间范围
+    # 3. 严格过滤: 法规+平台信号+排除中国大陆+排除噪音+时间范围
     relevant = [a for a in unique_items if is_legislation_relevant(a) and is_recent(a, max_days)]
-    logger.info(f"严格过滤后: {len(relevant)} 条立法相关文章")
+    logger.info(f"严格过滤后: {len(relevant)} 条互联网平台合规相关文章")
 
     # 4. 日期精准化（对来源日期不可信的文章抓取真实发布时间）
     relevant = enrich_article_dates(relevant)
