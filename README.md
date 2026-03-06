@@ -166,9 +166,11 @@ python3 monitor.py retranslate
 
 HTML 报告可通过 htmlpreview.github.io 在线预览：
 
-```
-https://htmlpreview.github.io/?https://raw.githubusercontent.com/evonotevil/Monitor-v2/main/reports/latest.html
-```
+**[点击查看最新月报](https://htmlpreview.github.io/?https://raw.githubusercontent.com/evonotevil/Monitor-v2/main/reports/latest.html)**
+
+PDF 版本直接下载：
+
+**[下载最新月报 PDF](https://github.com/evonotevil/Monitor-v2/raw/main/reports/latest.pdf)**
 
 ---
 
