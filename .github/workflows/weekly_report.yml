@@ -55,13 +55,13 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: playwright install-deps chromium
 
-      # ── 3. 生成 HTML 报告（DB 已由当日 daily_check 更新，无需重复抓取）
-      #    注意：每月1日 daily_check 在 09:33 运行，本流程在 09:47，DB 已最新
-      #    如需强制重新抓取，可手动触发并在步骤前加 python monitor.py run
-      - name: Generate HTML report
+      # ── 3. 抓取最新数据并生成 HTML 报告
+      #    run 命令会先增量更新 DB，再生成 monthly_{timestamp}.html
+      - name: Fetch data and generate HTML report
+        continue-on-error: false
         env:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-        run: python monitor.py report --format html --period month
+        run: python monitor.py run --period month
 
       # ── 4. 生成 PDF（同时写 latest.html / latest.pdf 和带日期文件名）
       - name: Generate PDF report
