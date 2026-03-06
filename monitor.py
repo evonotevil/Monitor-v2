@@ -311,7 +311,7 @@ def _split_main_appendix(items: list) -> tuple:
     """
     sorted_items = sorted(
         items,
-        key=lambda x: (int(x.get("impact_score", 1)), x.get("date", "")),
+        key=lambda x: (int(x.get("impact_score") or 1), x.get("date", "")),
         reverse=True,
     )
 
@@ -344,7 +344,7 @@ def _split_main_appendix(items: list) -> tuple:
 
     appendix = reserve
     main.sort(
-        key=lambda x: (int(x.get("impact_score", 1)), x.get("date", "")),
+        key=lambda x: (int(x.get("impact_score") or 1), x.get("date", "")),
         reverse=True,
     )
 
@@ -401,7 +401,7 @@ def _deep_cluster_timeline(items: list) -> list:
         # 保留 impact_score 最高的条目作为代表
         winner_idx = max(
             [x[0] for x in all_stages],
-            key=lambda x: int(items[x].get("impact_score", 1)),
+            key=lambda x: int(items[x].get("impact_score") or 1),
         )
         for idx, _ in all_stages:
             if idx != winner_idx:

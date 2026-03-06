@@ -555,26 +555,20 @@ def _parse_iso_date(s: str) -> Optional[str]:
     if not s:
         return None
     s = s.strip()
-    # 常见格式: 2026-02-15T10:30:00Z / 2026-02-15 / 20260215
-    for fmt in ("%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%SZ",
-                "%Y-%m-%dT%H:%M:%S%z", "%Y%m%d"):
+    today = datetime.now().strftime("%Y-%m-%d")
+    # 从最具体到最宽松逐格式尝试，直接传入完整字符串让 strptime 自行校验
+    for fmt in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ",
+                "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d", "%Y%m%d"):
         try:
-            dt = datetime.strptime(s[:len(fmt.replace('%Y','0000').replace('%m','00')
-                                        .replace('%d','00').replace('%H','00')
-                                        .replace('%M','00').replace('%S','00')
-                                        .replace('%z',''))], fmt)
-            result = dt.strftime("%Y-%m-%d")
-            # 合理性校验：2020-01-01 ~ 今天
-            if "2020-01-01" <= result <= datetime.now().strftime("%Y-%m-%d"):
+            result = datetime.strptime(s, fmt).strftime("%Y-%m-%d")
+            if "2020-01-01" <= result <= today:
                 return result
         except ValueError:
             continue
-    # 简单提取 YYYY-MM-DD
+    # 兜底：正则提取 YYYY-MM-DD 子串
     m = re.search(r"(202[0-9]-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01]))", s)
-    if m:
-        candidate = m.group(1)
-        if candidate <= datetime.now().strftime("%Y-%m-%d"):
-            return candidate
+    if m and m.group(1) <= today:
+        return m.group(1)
     return None
 
 
