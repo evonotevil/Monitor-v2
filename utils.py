@@ -71,6 +71,23 @@ _STATUS_DISPLAY_MAP = {
 }
 
 
+def bigram_sim(a: str, b: str) -> float:
+    """字符 bigram Jaccard 相似度（0~1），用于标题/摘要去重。
+
+    采用 Jaccard（交集/并集）而非 recall（交集/a）：
+      - 较长的好摘要分母更大，不会因包含标题关键词而被误判为高相似；
+      - 短文本（< 2 字符）或空值直接返回 0.0。
+    推荐阈值：标题去重 > 0.55，展示层去重 > 0.45。
+    """
+    a, b = (a or "").lower(), (b or "").lower()
+    if len(a) < 2 or len(b) < 2:
+        return 0.0
+    bg_a = {a[i:i + 2] for i in range(len(a) - 1)}
+    bg_b = {b[i:i + 2] for i in range(len(b) - 1)}
+    union = bg_a | bg_b
+    return len(bg_a & bg_b) / len(union) if union else 0.0
+
+
 def normalize_status(status: str) -> str:
     """将 DB 中可能存在的历史状态值映射到当前展示标签，找不到则原样返回。"""
     return _STATUS_DISPLAY_MAP.get(status, status)

@@ -18,7 +18,7 @@ from typing import List, Optional
 
 from config import OUTPUT_DIR, REGION_DISPLAY_ORDER
 from classifier import get_source_tier
-from utils import _REGION_GROUP_MAP, _GROUP_ORDER, _GROUP_EMOJI, _get_region_group, normalize_status
+from utils import _REGION_GROUP_MAP, _GROUP_ORDER, _GROUP_EMOJI, _get_region_group, normalize_status, bigram_sim
 
 
 def ensure_output_dir():
@@ -129,15 +129,6 @@ def _dedup_for_display(items: List[dict]) -> List[dict]:
 
     TIER_PRIORITY = {"official": 4, "legal": 3, "industry": 2, "news": 1}
 
-    def _bigram_sim(a: str, b: str) -> float:
-        a, b = (a or "").lower(), (b or "").lower()
-        if len(a) < 2 or len(b) < 2:
-            return 0.0
-        bg_a = {a[i:i + 2] for i in range(len(a) - 1)}
-        bg_b = {b[i:i + 2] for i in range(len(b) - 1)}
-        union = bg_a | bg_b
-        return len(bg_a & bg_b) / len(union) if union else 0.0
-
     def _priority(item: dict) -> tuple:
         impact = int(item.get("impact_score", 1))
         tier   = TIER_PRIORITY.get(get_source_tier(item.get("source_name", "")), 1)
@@ -172,7 +163,7 @@ def _dedup_for_display(items: List[dict]) -> List[dict]:
 
             # ② Bigram 相似度
             t_kept = (kitem.get("title_zh") or kitem.get("title") or "")
-            sim = _bigram_sim(t_item, t_kept)
+            sim = bigram_sim(t_item, t_kept)
             if sim > 0.45:          # 确定重复
                 extra[kidx] = extra.get(kidx, 0) + 1
                 is_dup = True

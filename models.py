@@ -54,7 +54,7 @@ class Database:
                 category_l2 TEXT DEFAULT '',
                 title TEXT NOT NULL,
                 date TEXT NOT NULL,
-                status TEXT DEFAULT '政策信号',
+                status TEXT DEFAULT '立法动态',
                 summary TEXT DEFAULT '',
                 source_name TEXT DEFAULT '',
                 source_url TEXT DEFAULT '',

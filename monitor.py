@@ -28,7 +28,7 @@ from models import Database
 from fetcher import fetch_and_process
 from translator import translate_items_batch
 from reporter import print_table, save_markdown, save_html, generate_markdown
-from utils import _get_region_group
+from utils import _get_region_group, bigram_sim
 from config import PERIOD_DAYS
 
 # ─── 日志配置 ─────────────────────────────────────────────────────────
@@ -48,19 +48,6 @@ logger = logging.getLogger(__name__)
 def _period_to_days(period: str) -> int:
     """将周期名称转为天数"""
     return PERIOD_DAYS.get(period, PERIOD_DAYS["all"])
-
-
-# ─── 语义去重（同地区/同日期窗口内高度相似的文章只保留一条）────────────
-
-def _title_bigram_sim(a: str, b: str) -> float:
-    """计算两个标题的 bigram 字符 Jaccard 重叠率（0~1）。"""
-    a, b = a.lower(), b.lower()
-    if len(a) < 2 or len(b) < 2:
-        return 0.0
-    bg_a = {a[i:i + 2] for i in range(len(a) - 1)}
-    bg_b = {b[i:i + 2] for i in range(len(b) - 1)}
-    union = bg_a | bg_b
-    return len(bg_a & bg_b) / len(union) if union else 0.0
 
 
 # ─── 事件指纹（事件聚类核心）────────────────────────────────────────────
@@ -180,7 +167,7 @@ def _deduplicate_items(items):
                 continue
 
             # ① 标题 bigram 相似度（原有逻辑，阈值从 0.65 → 0.55）
-            sim = _title_bigram_sim(item_i.title, item_j.title)
+            sim = bigram_sim(item_i.title, item_j.title)
             if sim > 0.55:
                 duplicates.append(j)
                 continue
@@ -251,7 +238,7 @@ def _deduplicate_report_items(items: list, merge_fn=None, date_window_days: int 
 
             # ① 中文标题 bigram 相似度（原有逻辑，阈值从 0.80 → 0.55）
             title_j_zh = (item_j.get("title_zh") or item_j.get("title") or "").strip()
-            if _title_bigram_sim(title_i_zh, title_j_zh) > 0.55:
+            if bigram_sim(title_i_zh, title_j_zh) > 0.55:
                 duplicates.append(j)
                 continue
 
