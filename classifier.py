@@ -313,6 +313,7 @@ def classify_article(article: dict) -> LegislationItem:
     l1, l2 = _detect_category(text)
     status = _detect_status(text)
     source_name = article.get("source", "")
+    impact = score_impact(status, source_name, region=region, text=text)
 
     return LegislationItem(
         region=region,
