@@ -121,20 +121,18 @@ def _deduplicate_items(items):
     return result
 
 
-def _deduplicate_report_items(items: list) -> list:
+def _deduplicate_report_items(items: list, merge_fn=None) -> list:
     """
-    对从 DB 查出的已翻译条目做跨来源去重。
+    对从 DB 查出的已翻译条目做跨来源去重，并可选地使用 LLM 合并集群摘要。
 
     逻辑：同一「显示分组」内，title_zh bigram 相似度 >0.80 且日期差 ≤3 天
-    的条目视为同一事件的不同来源报道，只保留发布日期最新的那条
-    （相同日期则取 DB id 最小的，即最早入库的），并在其摘要末尾注明
-    "另有 X 篇同主题报道"。
+    的条目视为同一事件的不同来源报道，只保留发布日期最新的那条，
+    并将各来源摘要通过 merge_fn 合并为富信息摘要。
 
-    与 _deduplicate_items 的区别：
-    - 作用对象：DB 查询返回的 dict 列表（已含 title_zh）
-    - 比对字段：title_zh（LLM 标准化中文标题，比英文原标题更利于跨源比对）
-    - 阈值：0.80（仅合并标题高度相似的同事件多来源报道）
-    - 日期窗口：3 天；保留策略：最新日期优先
+    Args:
+        items:    DB 查询返回的 dict 列表（已含 title_zh）
+        merge_fn: 可选的摘要合并函数 merge_fn(title_zh, summaries) -> str
+                  不传则用简单的"[另有 N 篇]"标注
     """
     from datetime import date as _date
     dropped: set[int] = set()
@@ -175,8 +173,32 @@ def _deduplicate_report_items(items: list) -> list:
             loser_count = len(group_idxs) - 1
             for idx in group_idxs[1:]:
                 dropped.add(idx)
-            if loser_count > 0 and items[winner_idx].get("summary_zh"):
-                items[winner_idx]["summary_zh"] += f" [另有 {loser_count} 篇同主题报道]"
+
+            if loser_count > 0:
+                title_zh = (items[winner_idx].get("title_zh") or "").strip()
+                # 收集所有集群成员的摘要（去空后去重）
+                cluster_summaries = []
+                seen_s = set()
+                for idx in group_idxs:
+                    s = (items[idx].get("summary_zh") or items[idx].get("summary") or "").strip()
+                    if s and s not in seen_s:
+                        cluster_summaries.append(s)
+                        seen_s.add(s)
+
+                if merge_fn and len(cluster_summaries) >= 2 and title_zh:
+                    try:
+                        merged = merge_fn(title_zh, cluster_summaries)
+                        if merged:
+                            items[winner_idx]["summary_zh"] = (
+                                merged + f"（汇总了来自 {len(group_idxs)} 个源的报道）"
+                            )
+                    except Exception as _me:
+                        logger.warning(f"[集群合并] 摘要合并失败: {_me}")
+                        if items[winner_idx].get("summary_zh"):
+                            items[winner_idx]["summary_zh"] += f" [另有 {loser_count} 篇同主题报道]"
+                else:
+                    if items[winner_idx].get("summary_zh"):
+                        items[winner_idx]["summary_zh"] += f" [另有 {loser_count} 篇同主题报道]"
 
     result = [item for i, item in enumerate(items) if i not in dropped]
     if len(items) != len(result):
@@ -185,6 +207,31 @@ def _deduplicate_report_items(items: list) -> list:
             f"（合并 {len(items) - len(result)} 条跨来源同主题报道）"
         )
     return result
+
+
+# ─── 报告条目截断（主报告 + 附录）────────────────────────────────────────
+
+MAIN_REPORT_LIMIT = 40  # 主报告最多保留条数（按 impact_score 从高到低）
+
+
+def _split_main_appendix(items: list) -> tuple:
+    """
+    按 impact_score 降序排序，切分为主报告（≤40条）和附录（其余）。
+    返回 (main_items, appendix_items)。
+    """
+    sorted_items = sorted(
+        items,
+        key=lambda x: (int(x.get("impact_score", 1)), x.get("date", "")),
+        reverse=True,
+    )
+    main = sorted_items[:MAIN_REPORT_LIMIT]
+    appendix = sorted_items[MAIN_REPORT_LIMIT:]
+    if appendix:
+        logger.info(
+            f"[截断] 主报告 {len(main)} 条（impact_score 最高），"
+            f"附录 {len(appendix)} 条"
+        )
+    return main, appendix
 
 
 def _period_label(period: str) -> str:
@@ -247,7 +294,11 @@ def cmd_run(args):
                             f" | {item.title[:50]}"
                         )
                         item.status = llm_status
-                        item.impact_score = score_impact(item.status, item.source_name)
+                        item.impact_score = score_impact(
+                            item.status, item.source_name,
+                            region=item.region,
+                            text=f"{item.title} {item.summary}",
+                        )
 
                     kept_items.append(item)
 
@@ -267,31 +318,41 @@ def cmd_run(args):
 
         all_items = db.query_items(days=days)
         if all_items:
-            all_items = _deduplicate_report_items(all_items)
-            print_table(all_items)
+            # 跨来源去重 + LLM 集群摘要合并
+            try:
+                from translator import merge_cluster_summary
+                all_items = _deduplicate_report_items(all_items, merge_fn=merge_cluster_summary)
+            except ImportError:
+                all_items = _deduplicate_report_items(all_items)
+
+            # 按 impact_score 截断：主报告 top-40，其余放附录
+            main_items, appendix_items = _split_main_appendix(all_items)
+            print_table(main_items)
 
             # 生成月度合规形势综述（LLM，失败时静默回退）
             exec_summary = ""
             try:
                 from translator import generate_executive_summary
                 logger.info("正在生成月度合规形势综述...")
-                exec_summary = generate_executive_summary(all_items)
+                exec_summary = generate_executive_summary(main_items)
             except Exception as _e:
                 logger.warning(f"综述生成失败，跳过: {_e}")
 
             if args.output:
                 if args.output.endswith(".html"):
-                    path = save_html(all_items, args.output, period_label=label,
-                                     exec_summary=exec_summary)
+                    path = save_html(main_items, args.output, period_label=label,
+                                     exec_summary=exec_summary,
+                                     appendix_items=appendix_items)
                 else:
-                    path = save_markdown(all_items, args.output)
+                    path = save_markdown(main_items, args.output)
                 logger.info(f"报告已保存到: {path}")
             else:
                 ts = datetime.now().strftime('%Y%m%d_%H%M%S')
                 prefix = {"week": "weekly", "month": "monthly", "all": "report"}.get(args.period, "report")
-                md_path = save_markdown(all_items, f"{prefix}_{ts}.md")
-                html_path = save_html(all_items, f"{prefix}_{ts}.html", period_label=label,
-                                      exec_summary=exec_summary)
+                md_path = save_markdown(main_items, f"{prefix}_{ts}.md")
+                html_path = save_html(main_items, f"{prefix}_{ts}.html", period_label=label,
+                                      exec_summary=exec_summary,
+                                      appendix_items=appendix_items)
                 logger.info(f"Markdown 报告: {md_path}")
                 logger.info(f"HTML 报告: {html_path}")
 
@@ -322,29 +383,37 @@ def cmd_report(args):
             print(f"数据库中暂无 [{label}] 匹配数据。请先运行 `python monitor.py run` 抓取数据。")
             return
 
-        items = _deduplicate_report_items(items)
+        try:
+            from translator import merge_cluster_summary
+            items = _deduplicate_report_items(items, merge_fn=merge_cluster_summary)
+        except ImportError:
+            items = _deduplicate_report_items(items)
+
+        main_items, appendix_items = _split_main_appendix(items)
 
         exec_summary = ""
         fmt = args.format.lower()
         if fmt == "html":
             try:
                 from translator import generate_executive_summary
-                exec_summary = generate_executive_summary(items)
+                exec_summary = generate_executive_summary(main_items)
             except Exception as _e:
                 logger.warning(f"综述生成失败，跳过: {_e}")
 
         if fmt == "table":
-            print_table(items)
+            print_table(main_items)
         elif fmt in ("markdown", "md"):
-            path = save_markdown(items, args.output) if args.output else save_markdown(items)
+            path = save_markdown(main_items, args.output) if args.output else save_markdown(main_items)
             print(f"Markdown 报告已保存到: {path}")
         elif fmt == "html":
-            path = (save_html(items, args.output, period_label=label, exec_summary=exec_summary)
+            path = (save_html(main_items, args.output, period_label=label,
+                              exec_summary=exec_summary, appendix_items=appendix_items)
                     if args.output
-                    else save_html(items, period_label=label, exec_summary=exec_summary))
+                    else save_html(main_items, period_label=label,
+                                   exec_summary=exec_summary, appendix_items=appendix_items))
             print(f"HTML 报告已保存到: {path}")
         else:
-            print_table(items)
+            print_table(main_items)
 
     finally:
         db.close()

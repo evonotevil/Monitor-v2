@@ -602,14 +602,14 @@ def fetch_google_news_all() -> List[dict]:
     all_items = []
     tasks = []
 
-    # ── 英语圈：美国 + 英国/澳洲/加拿大/新加坡 补充视角 ──────────────
+    # ── 英语圈：美国（全量）+ 英国/澳洲/新加坡（专项关键词）──────────
     for kw in KEYWORDS["en"]:
         tasks.append((kw, "en_US"))
-    for kw in KEYWORDS["en"][30:50]:  # 经营合规相关关键词补充英国视角
+    for kw in KEYWORDS.get("en_uk", []):  # 英国专项：OSA/ICO/CMA 等
         tasks.append((kw, "en_UK"))
-    for kw in KEYWORDS["en"][10:30]:  # 未成年/数据隐私补充澳洲视角
+    for kw in KEYWORDS.get("en_au", []):  # 澳洲专项：eSafety/Privacy Act 等
         tasks.append((kw, "en_AU"))
-    for kw in KEYWORDS["en"][30:50]:  # 东南亚经营合规补充新加坡视角
+    for kw in KEYWORDS.get("en_sg", []):  # 新加坡/东南亚英文专项
         tasks.append((kw, "en_SG"))
 
     # ── 亚洲本地语言 ───────────────────────────────────────────────

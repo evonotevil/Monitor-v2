@@ -235,18 +235,29 @@ STATUS_PATTERNS = {
 }
 
 
-# ─── 影响评分体系 ─────────────────────────────────────────────────────
+# ─── 影响评分体系（0-10分制）─────────────────────────────────────────
 
-_IMPACT_STATUS_BASE = {
-    "已生效":       3,
-    "即将生效":     3,
-    "修订变更":      3,
-    "执法动态":     2,
-    "草案/征求意见": 2,
-    "立法进行中":   2,
-    "已提案":       2,
-    "已废止":       1,
-    "立法动态":     1,
+# 法律效力权重（基于状态）
+_LEGAL_WEIGHT = {
+    "已生效":        10,
+    "执法动态":       9,
+    "即将生效":       7,
+    "修订变更":       6,
+    "立法进行中":     6,
+    "草案/征求意见":  5,
+    "已提案":         4,
+    "立法动态":       3,
+    "政策信号":       3,
+    "已废止":         2,
+}
+
+# 地区战略重要性权重
+_HIGH_IMPORTANCE_REGIONS = {
+    "全球", "欧盟", "美国", "英国", "德国", "法国", "北美", "欧洲",
+}
+_MID_IMPORTANCE_REGIONS = {
+    "日本", "韩国", "澳大利亚", "新西兰", "印度", "巴西",
+    "加拿大", "大洋洲", "南美",
 }
 
 
@@ -260,17 +271,36 @@ def get_source_tier(source_name: str) -> str:
     return "news"
 
 
-def score_impact(status: str, source_name: str) -> int:
-    """计算影响评分 (1–3)"""
-    base = _IMPACT_STATUS_BASE.get(status, 1)
+def score_impact(status: str, source_name: str,
+                 region: str = "", text: str = "") -> int:
+    """
+    计算影响评分 (1–10)。
+    = round((法律效力权重 + 地区重要性权重) / 2) + 官方信源加成
+    """
+    legal_w = _LEGAL_WEIGHT.get(status, 3)
+
+    # 执法动态 + 罚款/制裁关键词 → 升至最高法律效力
+    if text and re.search(
+        r'\bfine[ds]?\b|\bsanction\w*\b|\bpenalt\w+\b|\benforcement\b'
+        r'|罚款|处罚|制裁',
+        text, re.IGNORECASE,
+    ):
+        legal_w = max(legal_w, 9)
+
+    # 地区权重
+    if region in _HIGH_IMPORTANCE_REGIONS:
+        region_w = 10
+    elif region in _MID_IMPORTANCE_REGIONS:
+        region_w = 7
+    else:
+        region_w = 6  # 东南亚 / 中东 / 台港澳等
+
+    # 官方信源 +1
     tier = get_source_tier(source_name)
+    tier_bonus = 1 if tier == "official" else 0
 
-    if tier == "official":
-        base = min(3, base + 1)
-    elif tier == "legal" and base < 3:
-        base = min(3, base + 1)
-
-    return base
+    score = round((legal_w + region_w) / 2) + tier_bonus
+    return min(10, max(1, score))
 
 
 # ─── 分类入口 ────────────────────────────────────────────────────────
@@ -283,7 +313,6 @@ def classify_article(article: dict) -> LegislationItem:
     l1, l2 = _detect_category(text)
     status = _detect_status(text)
     source_name = article.get("source", "")
-    impact = score_impact(status, source_name)
 
     return LegislationItem(
         region=region,

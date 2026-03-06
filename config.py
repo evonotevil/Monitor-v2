@@ -147,9 +147,7 @@ KEYWORDS = {
     "en": [
         # === 数据隐私 ===
         "GDPR enforcement fine 2026",
-        "GDPR enforcement fine 2025",
         "data protection authority fine",
-        "data protection regulation enforcement",
         "CCPA CPRA enforcement action",
         "state privacy law enforcement 2026",
         "biometric data regulation law",
@@ -160,12 +158,10 @@ KEYWORDS = {
         "cookie consent enforcement fine",
         "personal data protection law new",
         "data adequacy decision",
-        "privacy regulation enforcement digital",
 
         # === AI 合规 ===
         "EU AI Act compliance enforcement",
         "AI regulation law 2026",
-        "AI regulation law 2025",
         "AI training copyright lawsuit",
         "generative AI regulation law",
         "AI liability legislation",
@@ -188,7 +184,6 @@ KEYWORDS = {
         "children digital safety law",
         "parental consent digital platform",
         "COPPA enforcement 2026",
-        "COPPA enforcement 2025",
         "FTC children online privacy fine",
         "under 16 social media ban",
         "age verification requirement platform",
@@ -197,13 +192,12 @@ KEYWORDS = {
         # === 平台与竞争合规 ===
         "Digital Services Act enforcement fine",
         "DSA enforcement 2026",
-        "DSA enforcement 2025",
         "Digital Markets Act compliance gatekeeper",
         "DMA enforcement penalty",
         "app store antitrust regulation",
         "Apple App Store antitrust fine",
         "Google Play antitrust regulation",
-        "platform competition law",
+        "digital platform antitrust enforcement",
         "third party payment regulation",
         "platform transparency obligation",
         "online platform regulation enforcement",
@@ -214,7 +208,6 @@ KEYWORDS = {
         "deceptive design enforcement fine",
         "influencer disclosure law enforcement",
         "misleading advertising fine digital",
-        "online advertising regulation",
         "targeted advertising ban children",
         "dark pattern fine platform",
         "sponsored content disclosure rule",
@@ -258,9 +251,36 @@ KEYWORDS = {
         "foreign digital platform local entity",
     ],
 
+    # ── 英国专项（UK-specific regulations）──────────────────────────
+    "en_uk": [
+        "UK Online Safety Act Ofcom enforcement",
+        "UK ICO enforcement fine 2026",
+        "UK CMA digital markets antitrust",
+        "UK children social media age restriction",
+        "UK AI regulation governance",
+        "UK data protection enforcement fine",
+    ],
+
+    # ── 澳大利亚专项 ──────────────────────────────────────────────
+    "en_au": [
+        "Australia eSafety Commissioner enforcement",
+        "Australia Online Safety Act platform",
+        "Australia age verification social media law",
+        "Australia Privacy Act OAIC enforcement",
+        "Australia children social media ban law",
+        "Australia ACCC digital platform antitrust",
+    ],
+
+    # ── 新加坡 / 东南亚英文专项 ──────────────────────────────────
+    "en_sg": [
+        "Singapore PDPA enforcement personal data fine",
+        "Singapore Online Safety Act IMDA",
+        "Southeast Asia digital platform regulation 2026",
+        "Singapore digital services platform compliance",
+    ],
+
     "ja": [
         "デジタルプラットフォーム規制 法律 2026",
-        "デジタルプラットフォーム規制 法律 2025",
         "個人情報保護 法改正",
         "AI 著作権 法律 規制",
         "未成年者 SNS 規制 年齢確認",
@@ -275,7 +295,6 @@ KEYWORDS = {
 
     "ko": [
         "개인정보보호 법안 플랫폼 2026",
-        "개인정보보호 법안 플랫폼 2025",
         "AI 규제 법안 저작권",
         "미성년자 SNS 이용 제한 법률",
         "플랫폼 공정거래 규제",
@@ -289,7 +308,6 @@ KEYWORDS = {
 
     "vi": [
         "quy định nền tảng số 2026",
-        "quy định nền tảng số 2025",
         "bảo vệ dữ liệu cá nhân Việt Nam",
         "luật bảo vệ trẻ em trực tuyến",
         "quy định AI nền tảng số",
@@ -299,7 +317,6 @@ KEYWORDS = {
 
     "id": [
         "regulasi platform digital Indonesia 2026",
-        "regulasi platform digital Indonesia 2025",
         "perlindungan data pribadi Indonesia",
         "regulasi AI Indonesia",
         "perlindungan anak online Indonesia",
@@ -447,6 +464,16 @@ RSS_FEEDS = [
         "tier": "legal",
     },
 
+    # ── 官方 (Official tier 补充) ─────────────────────────────────────
+    {
+        "name": "EDPB News",
+        "url": "https://edpb.europa.eu/news/news_rss_en",
+        "lang": "en",
+        "type": "rss",
+        "region": "欧洲",
+        "tier": "official",
+    },
+
     # ── 行业媒体 (Industry tier) ──────────────────────────────────────
     {
         "name": "EFF Deeplinks",
@@ -457,21 +484,14 @@ RSS_FEEDS = [
         "tier": "industry",
     },
     {
-        "name": "TechCrunch",
-        "url": "https://techcrunch.com/feed/",
+        "name": "Tech Policy Press",
+        "url": "https://techpolicy.press/feed/",
         "lang": "en",
         "type": "rss",
         "region": "全球",
         "tier": "industry",
     },
-    {
-        "name": "The Verge",
-        "url": "https://www.theverge.com/rss/index.xml",
-        "lang": "en",
-        "type": "rss",
-        "region": "全球",
-        "tier": "industry",
-    },
+    # 注: TechCrunch / The Verge 已移除（每月 ~2700 条但相关率 <1%，主要噪音来源）
 ]
 
 # ─── Google News 搜索 ────────────────────────────────────────────────
@@ -515,6 +535,7 @@ SOURCE_TIER_MAP = {
     "UK Gov (Ofcom/Digital Regulation)": "official",
     "UK Gov (Children Online Safety)":   "official",
     "UK ICO News":                       "official",
+    "EDPB News":                         "official",
     # ── legal ─────────────────────────────────────────────────────────
     "GDPR.eu News":                      "legal",
     "IAPP Privacy News":                 "legal",
@@ -524,8 +545,9 @@ SOURCE_TIER_MAP = {
     "Law360":                            "legal",
     # ── industry ──────────────────────────────────────────────────────
     "EFF Deeplinks":                     "industry",
-    "TechCrunch":                        "industry",
-    "The Verge":                         "industry",
+    "Tech Policy Press":                 "industry",
+    "TechCrunch":                        "industry",   # 保留映射（可能出现在 Google News 结果）
+    "The Verge":                         "industry",   # 保留映射（可能出现在 Google News 结果）
     "Wired":                             "industry",
     "Ars Technica":                      "industry",
     "The Information":                   "industry",

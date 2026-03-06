@@ -272,9 +272,13 @@ STATUS_CSS = {
 }
 
 IMPACT_CONFIG = {
-    3: {"dots": "●●●", "label": "高优先",  "color": "#DC2626", "title": "高优先：已生效/即将生效/官方执法"},
-    2: {"dots": "●●○", "label": "中优先",  "color": "#D97706", "title": "中优先：草案/立法中/执法动态"},
-    1: {"dots": "●○○", "label": "低优先",  "color": "#16A34A", "title": "低优先：立法动态/背景信息"},
+    # 1-10 分制（与 classifier.score_impact 对应）
+    **{s: {"dots": "●●●", "label": "高优先", "color": "#DC2626",
+           "title": "高优先：已生效/执法/官方"}   for s in range(8, 11)},
+    **{s: {"dots": "●●○", "label": "中优先", "color": "#D97706",
+           "title": "中优先：草案/立法中/执法"}   for s in range(5,  8)},
+    **{s: {"dots": "●○○", "label": "低优先", "color": "#16A34A",
+           "title": "低优先：立法动态/背景"}       for s in range(1,  5)},
 }
 
 TIER_CONFIG = {
@@ -446,7 +450,8 @@ def _build_legend_html() -> str:
 
 
 def generate_html(items: List[dict], title: str = "全球互联网合规动态监控报告",
-                  period_label: str = "", exec_summary: str = "") -> str:
+                  period_label: str = "", exec_summary: str = "",
+                  appendix_items: Optional[List[dict]] = None) -> str:
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     logo_html = _get_logo_html()
 
@@ -510,9 +515,12 @@ def generate_html(items: List[dict], title: str = "全球互联网合规动态�
                 title_zh_raw if title_zh_raw else _truncate(summary_zh_raw, 80)
             )
 
-            # 建议操作（compliance_note，非空时显示）
+            # 建议操作（compliance_note，非空时显示；支持多行 【section】 格式）
             rec_note_raw = (item.get("compliance_note") or "").strip()
-            rec_note_esc = html_mod.escape(rec_note_raw) if rec_note_raw else ""
+            if rec_note_raw:
+                rec_note_esc = html_mod.escape(rec_note_raw).replace('\n', '<br>')
+            else:
+                rec_note_esc = ""
 
             # 英文原标题作为次要链接
             if url:
@@ -558,6 +566,34 @@ def generate_html(items: List[dict], title: str = "全球互联网合规动态�
                 f'</td>'
                 f'</tr>'
             )
+
+    # ── 附录：其他关注 ─────────────────────────────────────────────
+    appendix_html = ""
+    if appendix_items:
+        ap_list = ""
+        for ap in appendix_items:
+            ap_title = (ap.get("title_zh") or ap.get("title") or "").strip()
+            ap_url   = ap.get("source_url", "")
+            ap_cat   = ap.get("category_l1", "")
+            ap_reg   = ap.get("region", "")
+            ap_date  = ap.get("date", "")
+            if ap_url:
+                ap_link = (f'<a href="{html_mod.escape(ap_url)}" target="_blank" rel="noopener">'
+                           f'{html_mod.escape(ap_title)}</a>')
+            else:
+                ap_link = html_mod.escape(ap_title)
+            ap_list += (
+                f'<li>{ap_link}'
+                f'<span class="appendix-meta">'
+                f'[{html_mod.escape(ap_reg)}·{html_mod.escape(ap_cat)}·{html_mod.escape(ap_date)}]'
+                f'</span></li>'
+            )
+        appendix_html = (
+            f'<div class="card appendix-section">'
+            f'<div class="appendix-title">📎 其他关注（{len(appendix_items)} 条低优先级动态）</div>'
+            f'<ul class="appendix-list">{ap_list}</ul>'
+            f'</div>'
+        )
 
     legend_html = _build_legend_html()
 
@@ -857,6 +893,46 @@ td {{ padding: 9px 12px; font-size: 12px; vertical-align: top; }}
     color: #3D3D4E;
 }}
 
+/* ── 附录（其他关注）── */
+.appendix-section {{
+    padding: 16px 20px;
+    margin-bottom: 12px;
+}}
+.appendix-title {{
+    font-size: 12px;
+    font-weight: 700;
+    color: #636366;
+    letter-spacing: 0.3px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #F0F0F5;
+    padding-bottom: 6px;
+}}
+.appendix-list {{
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    columns: 2;
+    column-gap: 24px;
+}}
+.appendix-list li {{
+    font-size: 11px;
+    color: #636366;
+    padding: 4px 0;
+    border-bottom: 1px solid #F5F5F7;
+    break-inside: avoid;
+    line-height: 1.5;
+}}
+.appendix-list li a {{
+    color: #6E6EF7;
+    text-decoration: none;
+}}
+.appendix-list li a:hover {{ text-decoration: underline; }}
+.appendix-meta {{
+    font-size: 10px;
+    color: #AEAEB2;
+    margin-left: 4px;
+}}
+
 /* ── 页脚 ── */
 .footer {{
     margin-top: 24px;
@@ -934,6 +1010,9 @@ td {{ padding: 9px 12px; font-size: 12px; vertical-align: top; }}
     </table>
     <div class="no-data" id="noData">暂无匹配数据</div>
   </div>
+
+  <!-- 附录：其他关注 -->
+  {appendix_html}
 
   <!-- 页脚 -->
   <div class="footer">Bilibili Legal &nbsp;·&nbsp; 全球互联网合规监控 &nbsp;·&nbsp; 仅供内部参考</div>
@@ -1050,12 +1129,14 @@ function sortTable(col) {{
 
 
 def save_html(items: List[dict], filename: Optional[str] = None,
-              period_label: str = "", exec_summary: str = "") -> str:
+              period_label: str = "", exec_summary: str = "",
+              appendix_items: Optional[List[dict]] = None) -> str:
     ensure_output_dir()
     if not filename:
         filename = f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
     filepath = os.path.join(OUTPUT_DIR, filename)
-    content = generate_html(items, period_label=period_label, exec_summary=exec_summary)
+    content = generate_html(items, period_label=period_label,
+                            exec_summary=exec_summary, appendix_items=appendix_items)
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(content)
     return filepath
