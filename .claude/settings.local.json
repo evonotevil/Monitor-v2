@@ -30,7 +30,14 @@
       "Bash(python3 -c \"import reporter; import fetcher; import config; print\\(''✓ All modules import OK''\\)\")",
       "Bash(ls reports/weekly_*.html)",
       "Bash(xargs open)",
-      "Bash(python3 -c \"import config; print\\(''RSS源数量:'', len\\(config.RSS_FEEDS\\)\\); [print\\(f''  {f[\"\"tier\"\"]:8} | {f[\"\"name\"\"]}''\\) for f in config.RSS_FEEDS]\")"
+      "Bash(python3 -c \"import config; print\\(''RSS源数量:'', len\\(config.RSS_FEEDS\\)\\); [print\\(f''  {f[\"\"tier\"\"]:8} | {f[\"\"name\"\"]}''\\) for f in config.RSS_FEEDS]\")",
+      "Bash(git add translator.py models.py monitor.py assets/lilith-logo.png reports/Lilith-Legal-Compliance-Report-02-03-2026.pdf reports/monthly_20260306_161103.html reports/monthly_20260306_161103.md)",
+      "Bash(git commit:*)",
+      "Bash(git push origin main)",
+      "Bash(git pull --rebase origin main)",
+      "Bash(git stash)",
+      "Bash(git stash pop)",
+      "Bash(git add -A)"
     ]
   }
 }

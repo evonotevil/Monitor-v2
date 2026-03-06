@@ -1,28 +1,28 @@
-# 全球互联网合规动态监控
+# 全球互联网内容平台合规动态监控
 
-> 面向互联网企业合规团队的自动化法规情报工具，持续追踪全球主要市场的数据隐私、AI监管、平台竞争、未成年人保护等核心领域的监管动态。
+> 面向互联网内容平台（视频 / 直播 / UGC / 社交）合规团队的自动化法规情报工具，持续追踪全球主要市场在内容安全、未成年保护、数据隐私、版权、支付合规、商业化等核心领域的监管动态。
 
 ---
 
 ## 功能概览
 
 - **自动抓取**：覆盖 FTC、UK Gov、EFF、GDPR.eu、TechCrunch、The Verge 等 RSS 源；同时通过 Google News 多语言搜索（英、日、韩、越、印尼、德、法、葡、西、泰、阿拉伯语等 20+ 语种）获取本地语种监管动态
-- **AI 深度分析**：基于硅基流动 Qwen3-8B 批量处理，每条动态生成规范中文标题、30-50 字摘要、120-200 字正文分析（含背景/监管细节/影响/走向）以及 1-2 句合规提示
-- **智能分类**：按地区（东南亚 / 亚太 / 欧洲 / 北美 / 日韩台 等）和合规类别（数据隐私 / AI合规 / 平台与竞争合规 / 未成年人保护 等 9 大类）自动归类
+- **AI 深度分析**：基于硅基流动 Qwen3-8B 批量处理，每条动态生成规范中文标题、30-50 字摘要、120-200 字正文分析（含背景 / 监管细节 / 影响 / 走向）以及 1-2 句合规提示
+- **智能分类**：按地区（东南亚 / 亚太 / 欧洲 / 北美 / 日韩台 等）和合规类别（数据隐私 / AI 合规 / 平台与竞争合规 / 未成年人保护 等 9 大类）自动归类
 - **三重去重**：URL 精确匹配 → Bigram 语义相似度（阈值 0.45）→ LLM 批量核验，有效过滤跨来源的同主题重复报道
 - **交互式 HTML 报告**：支持按地区、分类、状态筛选和关键词搜索；区域内按时间倒序排列；点击条目可展开正文分析和合规提示
-- **PDF 报告**：每周自动生成 PDF 版本，方便分发存档
+- **PDF 报告**：每月自动生成 PDF 版本，方便分发存档
 
 ---
 
 ## 自动化调度
 
-| 任务 | 触发时间（北京/新加坡时间） | 说明 |
-|------|---------------------------|------|
-| 每日数据更新 | 周一至周五 09:33 | 抓取 + 翻译最新数据，写入数据库 |
-| 每周月报生成 | 每周一 09:47 | 读取已更新 DB，生成 HTML + PDF 报告并提交归档 |
+| 任务 | 触发时间（北京 / 新加坡时间） | 说明 |
+|------|------------------------------|------|
+| 每日数据更新 | 周一至周五 09:33 | 增量抓取 + AI 翻译分析，写入数据库 |
+| 月报生成 | 每月 1 日 09:47 | 抓取最新数据，生成 HTML + PDF 月报并提交归档 |
 
-> 周一 09:33 的日常抓取会先完成数据更新，09:47 的周报直接读取最新 DB，无需重复抓取。
+> **注意**：GitHub 对超过 60 天未有代码提交的仓库会自动暂停 Actions 计划任务。如遇停止，进入 Actions 页面重新启用即可。
 
 ---
 
@@ -46,11 +46,11 @@
 | 分类 | 典型议题 |
 |------|----------|
 | 数据隐私 | GDPR / CCPA 执法、跨境数据传输、数据本地化、Cookie 合规、数据泄露通报 |
-| AI合规 | EU AI Act 实施、AI 训练数据版权、生成式 AI 治理、深度伪造监管、LLM 责任 |
+| AI 合规 | EU AI Act 实施、AI 训练数据版权、生成式 AI 治理、深度伪造监管、LLM 责任 |
 | 未成年人保护 | 年龄验证、社交媒体禁令、COPPA / KOSA 执法、家长控制、未成年人数据收集 |
 | 平台与竞争合规 | DSA / DMA 执法、App Store 反垄断、第三方支付开放、平台透明度义务 |
 | 广告营销合规 | 虚假广告、KOL 披露义务、暗黑模式、定向广告限制 |
-| 消费者保护 | 订阅自动续费、退款政策、Loot Box / Gacha 随机付费机制、消费者权益诉讼 |
+| 消费者保护 | 订阅自动续费、退款政策、随机付费机制（Loot Box / Gacha）披露、消费者权益诉讼 |
 | 知识产权 | AI 训练数据版权诉讼、平台版权责任、内容抓取法律边界、流媒体版权 |
 | 内容监管 | 违法内容下架义务、仇恨言论监管、虚假信息治理、内容分级 |
 | 经营合规 | 本地代理 / 代表处要求、数字服务税、平台注册许可、外资限制 |
@@ -72,16 +72,16 @@ Monitor-v2/
 ├── generate_pdf.py     # Playwright 截图：HTML 报告 → PDF
 ├── requirements.txt    # Python 依赖
 ├── data/
-│   └── monitor.db      # SQLite 数据库（自动提交回仓库）
+│   └── monitor.db      # SQLite 数据库（每次 CI 运行后自动提交回仓库）
 ├── reports/
-│   ├── latest.html     # 最新 HTML 交互报告
-│   ├── latest.pdf      # 最新 PDF 报告
-│   └── archive/        # 历史周报（YYYY-WXX/weekly.html）
+│   ├── latest.html     # 最新 HTML 交互月报
+│   ├── latest.pdf      # 最新 PDF 月报
+│   └── archive/        # 历史月报存档（YYYY-MM/monthly.html）
 ├── assets/
 │   └── logo.png        # 品牌 Logo（替换此文件即可更换报告头部图标）
 └── .github/workflows/
-    ├── daily_check.yml     # 每日数据抓取 workflow
-    └── weekly_report.yml   # 每周报告生成 workflow
+    ├── daily_check.yml     # 每日数据抓取 workflow（周一至周五）
+    └── weekly_report.yml   # 月报生成 workflow（每月 1 日）
 ```
 
 ---
@@ -107,11 +107,9 @@ cd Monitor-v2
 
 进入 **Actions** 标签页，确认两个 workflow 已启用：
 - `每日合规动态检查`（`daily_check.yml`）：周一至周五 09:33 SGT 自动运行
-- `全球互联网合规周报`（`weekly_report.yml`）：每周一 09:47 SGT 自动运行
+- `全球互联网合规月报`（`weekly_report.yml`）：每月 1 日 09:47 SGT 自动运行
 
 首次测试可点击 **Run workflow** 手动触发。
-
-> **注意**：GitHub 对超过 60 天未有代码提交的仓库会自动暂停 Actions 计划任务。如遇停止，进入 Actions 页面重新启用即可。
 
 ---
 
@@ -125,7 +123,7 @@ playwright install chromium      # 仅 PDF 生成需要
 # 设置环境变量
 export LLM_API_KEY=sk-xxx
 
-# 抓取数据并生成月报（从上月1日至今）
+# 抓取数据并生成月报
 python3 monitor.py run --period month
 
 # 仅从数据库生成报告（不重新抓取）
@@ -160,9 +158,9 @@ python3 monitor.py retranslate
 
 | 文件 | 说明 |
 |------|------|
-| [`reports/latest.html`](reports/latest.html) | 最新 HTML 交互报告 |
-| [`reports/latest.pdf`](reports/latest.pdf) | 最新 PDF 报告 |
-| [`reports/archive/`](reports/archive/) | 历史周报存档（按 ISO 周号归档） |
+| [`reports/latest.html`](reports/latest.html) | 最新 HTML 交互月报 |
+| [`reports/latest.pdf`](reports/latest.pdf) | 最新 PDF 月报 |
+| [`reports/archive/`](reports/archive/) | 历史月报存档（按年月归档） |
 
 HTML 报告可通过 htmlpreview.github.io 在线预览：
 
@@ -177,7 +175,7 @@ PDF 版本直接下载：
 ## 技术说明
 
 - **LLM**：硅基流动 `Qwen/Qwen3-8B`，每批最多 3 条并行处理，批间 4 秒冷却（符合免费层限速）
-- **AI 输出字段**：每条动态生成 `title_zh`（标题）、`summary_zh`（摘要）、`detail_zh`（正文分析）、`compliance_note`（合规提示）
+- **AI 输出字段**：每条动态生成 `title_zh`（标题）、`summary_zh`（摘要）、`detail_zh`（正文分析）、`compliance_note`（合规提示）；部分条目（Google Translate 回退 / 历史数据）仅有标题和摘要
 - **数据库**：SQLite，存储在 `data/monitor.db`，每次 CI 运行后自动提交回仓库
 - **PDF 生成**：Playwright Chromium（GitHub Actions 已配置缓存，命中时安装时间从 90 秒降至 5 秒）
 - **Git 优化**：所有 workflow 使用 `fetch-depth: 1` 浅克隆，避免拉取含完整 DB 历史的大体积仓库
