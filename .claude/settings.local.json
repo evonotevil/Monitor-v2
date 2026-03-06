@@ -37,7 +37,9 @@
       "Bash(git pull --rebase origin main)",
       "Bash(git stash)",
       "Bash(git stash pop)",
-      "Bash(git add -A)"
+      "Bash(git add -A)",
+      "Bash(python -c \"from reporter import generate_html; print\\(''OK''\\)\")",
+      "Bash(python3 -c \"from reporter import generate_html; print\\(''OK''\\)\")"
     ]
   }
 }
