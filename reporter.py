@@ -567,31 +567,33 @@ def generate_html(items: List[dict], title: str = "全球互联网合规动态�
                 f'</tr>'
             )
 
-    # ── 附录：其他关注 ─────────────────────────────────────────────
+    # ── 附录：本月其他合规快讯（纯一行式：日期 · 标题[链接] [地区]）──────
     appendix_html = ""
     if appendix_items:
-        ap_list = ""
+        ap_lines = ""
         for ap in appendix_items:
             ap_title = (ap.get("title_zh") or ap.get("title") or "").strip()
-            ap_url   = ap.get("source_url", "")
-            ap_cat   = ap.get("category_l1", "")
+            ap_url   = ap.get("source_url", "").strip()
+            ap_date  = (ap.get("date") or "")[:10]
             ap_reg   = ap.get("region", "")
-            ap_date  = ap.get("date", "")
             if ap_url:
-                ap_link = (f'<a href="{html_mod.escape(ap_url)}" target="_blank" rel="noopener">'
-                           f'{html_mod.escape(ap_title)}</a>')
+                title_html = (
+                    f'<a href="{html_mod.escape(ap_url)}" target="_blank" rel="noopener">'
+                    f'{html_mod.escape(ap_title)}</a>'
+                )
             else:
-                ap_link = html_mod.escape(ap_title)
-            ap_list += (
-                f'<li>{ap_link}'
-                f'<span class="appendix-meta">'
-                f'[{html_mod.escape(ap_reg)}·{html_mod.escape(ap_cat)}·{html_mod.escape(ap_date)}]'
-                f'</span></li>'
+                title_html = html_mod.escape(ap_title)
+            ap_lines += (
+                f'<li>'
+                f'<span class="ap-date">{html_mod.escape(ap_date)}</span>'
+                f' &nbsp;·&nbsp; {title_html}'
+                f'<span class="ap-region"> [{html_mod.escape(ap_reg)}]</span>'
+                f'</li>\n'
             )
         appendix_html = (
             f'<div class="card appendix-section">'
-            f'<div class="appendix-title">📎 其他关注（{len(appendix_items)} 条低优先级动态）</div>'
-            f'<ul class="appendix-list">{ap_list}</ul>'
+            f'<div class="appendix-title">📎 本月其他合规快讯（{len(appendix_items)} 条）</div>'
+            f'<ul class="appendix-list">{ap_lines}</ul>'
             f'</div>'
         )
 
@@ -910,27 +912,37 @@ td {{ padding: 9px 12px; font-size: 12px; vertical-align: top; }}
 .appendix-list {{
     list-style: none;
     padding: 0;
-    margin: 0;
+    margin: 4px 0 0 0;
     columns: 2;
-    column-gap: 24px;
+    column-gap: 28px;
 }}
 .appendix-list li {{
     font-size: 11px;
-    color: #636366;
-    padding: 4px 0;
+    color: #48484A;
+    padding: 3px 0;
     border-bottom: 1px solid #F5F5F7;
     break-inside: avoid;
-    line-height: 1.5;
+    line-height: 1.6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }}
 .appendix-list li a {{
-    color: #6E6EF7;
+    color: #3A7AFE;
     text-decoration: none;
 }}
 .appendix-list li a:hover {{ text-decoration: underline; }}
-.appendix-meta {{
+.ap-date {{
+    font-variant-numeric: tabular-nums;
+    color: #8E8E93;
+    font-size: 10px;
+    min-width: 72px;
+    display: inline-block;
+}}
+.ap-region {{
     font-size: 10px;
     color: #AEAEB2;
-    margin-left: 4px;
+    margin-left: 3px;
 }}
 
 /* ── 页脚 ── */

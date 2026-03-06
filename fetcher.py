@@ -348,6 +348,57 @@ def is_legislation_relevant(article: dict) -> bool:
     return True
 
 
+# ─── 影响力预评分（漏斗第二层）────────────────────────────────────────
+
+# 标题高风险词 — 命中即直接说明是执法/生效/禁令等高优先动态
+_IMPACT_TITLE_RE = re.compile(
+    r"\b(?:fine[ds]?|sanction\w*|penalt\w+|effective\b|in\s+force\b|"
+    r"penaliz\w*|ban(?:ned|ning|s)?|enforcement\b|lawsuit|settlement|"
+    r"prohibit\w*|court\s+order|consent\s+order|blocking\b|enjoin\w*)\b",
+    re.IGNORECASE,
+)
+
+# 法案阶段权重：取第一个匹配的最高分
+_STAGE_RULES = [
+    (re.compile(r"\b(?:now\s+)?effective\b|in\s+force|takes?\s+effect", re.IGNORECASE), 0.20),
+    (re.compile(r"\benforcement\b|fine[ds]?\b|penalt\w+|sanction|处罚|罚款|制裁", re.IGNORECASE), 0.15),
+    (re.compile(r"\bact\b|\blaw\b|enacted|立法|法案|通过", re.IGNORECASE), 0.10),
+    (re.compile(r"\bdraft\b|\bconsultation\b|\bproposal\b|草案|征求意见", re.IGNORECASE), 0.05),
+]
+
+
+def _pre_score_article(article: dict) -> float:
+    """
+    影响力预评分 (0.0–1.0)。在严格语义过滤后、分类前运行。
+
+    组成：
+      标题高风险词命中   0.0–0.30  (每命中 1 个 +0.10，上限 0.30)
+      法案阶段关键词     0.0–0.20  (取第一个匹配的最高权重)
+      官方/法律信源加成  0.15 / 0.10 / 0.05 / 0.00
+
+    注：官方信源来自 FTC、ICO 等；阈值低于 _MIN_PRE_SCORE 的条目直接丢弃。
+    """
+    title = article.get("title", "")
+    text  = f"{title} {article.get('summary', '')}"
+
+    # 1. 标题高风险词：fine / ban / sanction / effective…
+    keyword_bonus = min(len(_IMPACT_TITLE_RE.findall(title)) * 0.10, 0.30)
+
+    # 2. 法案阶段：effective > enforcement > act/law > draft
+    stage_bonus = 0.0
+    for pattern, weight in _STAGE_RULES:
+        if pattern.search(text):
+            stage_bonus = weight
+            break
+
+    # 3. 信源权威层级（官方 RSS 得分最高）
+    from classifier import get_source_tier
+    tier = get_source_tier(article.get("source", ""))
+    source_bonus = {"official": 0.15, "legal": 0.10, "industry": 0.05}.get(tier, 0.0)
+
+    return min(1.0, keyword_bonus + stage_bonus + source_bonus)
+
+
 def is_recent(article: dict, max_days: int = MAX_ARTICLE_AGE_DAYS) -> bool:
     try:
         article_date = datetime.strptime(article["date"], "%Y-%m-%d")
@@ -737,6 +788,21 @@ def fetch_and_process(max_days: int = MAX_ARTICLE_AGE_DAYS) -> List[LegislationI
     # 3. 严格过滤: 法规+平台信号+排除中国大陆+排除噪音+时间范围
     relevant = [a for a in unique_items if is_legislation_relevant(a) and is_recent(a, max_days)]
     logger.info(f"严格过滤后: {len(relevant)} 条互联网平台合规相关文章")
+
+    # 3b. 影响力预评分漏斗：丢弃无任何高优先信号的低质量条目
+    _MIN_PRE_SCORE = 0.10
+    pre_scored = [(a, _pre_score_article(a)) for a in relevant]
+    before_count = len(relevant)
+    relevant = []
+    for a, s in pre_scored:
+        if s >= _MIN_PRE_SCORE:
+            a["_pre_score"] = round(s, 2)
+            relevant.append(a)
+    if len(relevant) < before_count:
+        logger.info(
+            f"影响力预评分过滤: {before_count} → {len(relevant)} 条"
+            f"（丢弃 {before_count - len(relevant)} 条低质量噪音，阈值 {_MIN_PRE_SCORE}）"
+        )
 
     # 4. 日期精准化（对来源日期不可信的文章抓取真实发布时间）
     relevant = enrich_article_dates(relevant)

@@ -19,6 +19,7 @@
 
 import argparse
 import logging
+import re
 import sys
 import time
 from datetime import datetime
@@ -52,97 +53,186 @@ def _period_to_days(period: str) -> int:
 # ─── 语义去重（同地区/同日期窗口内高度相似的文章只保留一条）────────────
 
 def _title_bigram_sim(a: str, b: str) -> float:
-    """计算两个英文标题的 bigram 字符重叠率（0~1）。"""
+    """计算两个标题的 bigram 字符 Jaccard 重叠率（0~1）。"""
     a, b = a.lower(), b.lower()
     if len(a) < 2 or len(b) < 2:
         return 0.0
     bg_a = {a[i:i + 2] for i in range(len(a) - 1)}
     bg_b = {b[i:i + 2] for i in range(len(b) - 1)}
-    return len(bg_a & bg_b) / max(len(bg_a), len(bg_b))
+    union = bg_a | bg_b
+    return len(bg_a & bg_b) / len(union) if union else 0.0
+
+
+# ─── 事件指纹（事件聚类核心）────────────────────────────────────────────
+
+_FP_STOPWORDS = {
+    'the','a','an','of','in','to','for','and','or','is','are','was','be',
+    'by','on','at','with','that','this','from','has','have','been','will',
+    'its','it','as','not','but','also','after','before','new','about','over',
+    'says','said','would','could','should','law','rule','rules','regulation',
+    'regulations','platform','platforms','digital','online','social','media',
+}
+
+
+def _event_fingerprint(title: str) -> frozenset:
+    """
+    从标题中提取事件指纹：数字 + 大写缩写 + 长内容词 + 内容词二元组。
+
+    为什么需要指纹而不仅用 bigram 相似度：
+    "Karnataka bans social media for users under 16" 和
+    "India: Under-16 social media ban enacted in Karnataka"
+    标题 bigram 相似度仅约 0.15，但两篇文章都有 #16 和 "karnataka"（长内容词），
+    通过 _same_event_by_fingerprint 的规则可识别为同一事件。
+    """
+    tokens = set()
+    # 1. 数字（年龄限制、罚款金额）
+    for m in re.finditer(r'\d+', title):
+        tokens.add(f"#{m.group()}")
+    # 2. 大写缩写 (GDPR / DSA / FTC / COPPA …)
+    for m in re.finditer(r'\b[A-Z]{2,}\b', title):
+        tokens.add(m.group().lower())
+    # 3. 内容词（去停用词）
+    words = [
+        w for w in re.findall(r"[a-z\u4e00-\u9fff]{2,}", title.lower())
+        if w not in _FP_STOPWORDS
+    ]
+    # 3a. 长内容词作为独立 token（≥5 字符，代表专有名词/地名）
+    for w in words:
+        if len(w) >= 5:
+            tokens.add(w)
+    # 3b. 内容词二元组
+    for i in range(len(words) - 1):
+        tokens.add(f"{words[i]}_{words[i + 1]}")
+    return frozenset(tokens)
+
+
+def _fp_sim(a: frozenset, b: frozenset) -> float:
+    """两个事件指纹的 Jaccard 相似度（0~1）。"""
+    if not a or not b:
+        return 0.0
+    union = a | b
+    return len(a & b) / len(union) if union else 0.0
+
+
+def _same_event_by_fingerprint(fp_a: frozenset, fp_b: frozenset) -> bool:
+    """
+    精确规则判断两个指纹是否指向同一事件。
+
+    比单纯的 Jaccard 更可靠，因为 Jaccard 容易被 GDPR/2026 等通用词干扰。
+
+    规则（满足其一即判为同一事件）：
+      ① Jaccard ≥ 0.30（大量共同 token）
+      ② 共同 token 中同时包含：
+           • 非年份数字（年龄/金额 < 4位年份）→ 具体事件参数
+           • ≥6 字符的专有名词 → 具体地点/机构名
+    """
+    common = fp_a & fp_b
+    if not common:
+        return False
+    if _fp_sim(fp_a, fp_b) >= 0.30:
+        return True
+    # 精确规则：非年份数字 + 长专有名词
+    has_specific_num = any(
+        t.startswith('#') and t[1:].isdigit()
+        and not (len(t[1:]) == 4 and t[1:2] == '2')   # 排除 2xxx 年份
+        for t in common
+    )
+    has_entity = any(
+        not t.startswith('#') and '_' not in t and len(t) >= 6
+        for t in common
+    )
+    return has_specific_num and has_entity
 
 
 def _deduplicate_items(items):
     """
-    在同一「显示分组」且日期相差 ≤2 天的文章中，找出英文标题 bigram 相似度 >65%
-    的文章对，只保留 impact_score 最高的那篇（相同则保留最早抓到的）。
-    其余视为重复，丢弃前在摘要末尾追加多来源提示。
+    抓取时去重（事件聚类第一层）：同一显示分组内，日期差 ≤7 天的文章中，
+    满足以下任一条件则视为同一事件：
+      ① 标题 bigram Jaccard > 0.55（高度相同措辞）
+      ② 事件指纹 Jaccard > 0.30（不同措辞但指向同一法案/事件）
 
-    注意：按显示分组（东南亚/欧洲/北美/其他…）而非原始 region 字段去重，
-    这样来自不同子 region（如"全球"/"澳大利亚"/"英国"）但属同一显示组的
-    同主题文章也能被合并。
+    保留 impact_score 最高的那篇（相同则保留最早抓到的）。
     """
     from models import LegislationItem
-    keep: list[LegislationItem] = []
-    dropped: set[int] = set()   # 索引集合
+    from datetime import date as _date
+    dropped: set[int] = set()
+
+    # 预计算指纹
+    fps = [_event_fingerprint(item.title) for item in items]
 
     for i, item_i in enumerate(items):
         if i in dropped:
             continue
         group_i = _get_region_group(item_i.region)
-        duplicates = []   # (j, sim)
+        duplicates = []
+
         for j, item_j in enumerate(items):
             if j <= i or j in dropped:
                 continue
-            # 按显示分组比较，而非原始 region 字段
             if group_i != _get_region_group(item_j.region):
                 continue
-            # 日期差 ≤2 天
             try:
-                from datetime import date
-                d_i = date.fromisoformat(item_i.date)
-                d_j = date.fromisoformat(item_j.date)
-                if abs((d_i - d_j).days) > 2:
+                d_i = _date.fromisoformat(item_i.date)
+                d_j = _date.fromisoformat(item_j.date)
+                if abs((d_i - d_j).days) > 7:
                     continue
             except ValueError:
                 continue
+
+            # ① 标题 bigram 相似度（原有逻辑，阈值从 0.65 → 0.55）
             sim = _title_bigram_sim(item_i.title, item_j.title)
-            if sim > 0.65:
-                duplicates.append((j, sim))
+            if sim > 0.55:
+                duplicates.append(j)
+                continue
+
+            # ② 事件指纹精确规则（同一法案不同标题措辞）
+            if _same_event_by_fingerprint(fps[i], fps[j]):
+                duplicates.append(j)
 
         if duplicates:
-            # 收集所有候选（包括 i 自身）
-            group = [(i, 0.0)] + duplicates
-            # 按 impact_score 降序排，分数相同则保留索引最小（先抓到的）
-            group.sort(key=lambda x: (-items[x[0]].impact_score, x[0]))
-            winner_idx = group[0][0]
+            group = [i] + duplicates
+            group.sort(key=lambda x: (-items[x].impact_score, x))
+            winner_idx = group[0]
             loser_count = len(group) - 1
-            for idx, _ in group[1:]:
+            for idx in group[1:]:
                 dropped.add(idx)
-            # 给保留项追加来源提示
             if loser_count > 0 and items[winner_idx].summary:
                 items[winner_idx].summary += f" [另有 {loser_count} 篇同主题报道]"
 
     result = [item for i, item in enumerate(items) if i not in dropped]
     if len(items) != len(result):
         logger.info(
-            f"[去重] 语义去重：{len(items)} 条 → {len(result)} 条"
-            f"（合并 {len(items) - len(result)} 条高度相似文章）"
+            f"[去重] 事件聚类：{len(items)} 条 → {len(result)} 条"
+            f"（合并 {len(items) - len(result)} 条同主题文章）"
         )
     return result
 
 
-def _deduplicate_report_items(items: list, merge_fn=None) -> list:
+def _deduplicate_report_items(items: list, merge_fn=None, date_window_days: int = 10) -> list:
     """
-    对从 DB 查出的已翻译条目做跨来源去重，并可选地使用 LLM 合并集群摘要。
+    报告层事件聚类（第二层）：对 DB 查出的已翻译条目做跨来源合并。
 
-    逻辑：同一「显示分组」内，title_zh bigram 相似度 >0.80 且日期差 ≤3 天
-    的条目视为同一事件的不同来源报道，只保留发布日期最新的那条，
-    并将各来源摘要通过 merge_fn 合并为富信息摘要。
+    识别同一事件的判定（满足其一即合并）：
+      ① title_zh bigram Jaccard > 0.55（中文标题高度相似）
+      ② 英文原标题事件指纹 Jaccard > 0.30（同一法案不同报道角度）
 
-    Args:
-        items:    DB 查询返回的 dict 列表（已含 title_zh）
-        merge_fn: 可选的摘要合并函数 merge_fn(title_zh, summaries) -> str
-                  不传则用简单的"[另有 N 篇]"标注
+    日期窗口：date_window_days 内（月报默认 10 天，同一法案进展通常集中在
+    一两周内；跨周期的不同动态属于独立事件，不应强制合并）。
+
+    保留日期最新、id 最小的条目作为"代表"，其余摘要通过 merge_fn 合并。
     """
     from datetime import date as _date
     dropped: set[int] = set()
+
+    # 预计算英文原标题的事件指纹
+    fps = [_event_fingerprint(item.get("title", "")) for item in items]
 
     for i, item_i in enumerate(items):
         if i in dropped:
             continue
         group_i = _get_region_group(item_i.get("region", ""))
-        title_i = (item_i.get("title_zh") or item_i.get("title") or "").strip()
-        if not title_i:
+        title_i_zh = (item_i.get("title_zh") or item_i.get("title") or "").strip()
+        if not title_i_zh:
             continue
 
         duplicates = []
@@ -154,17 +244,24 @@ def _deduplicate_report_items(items: list, merge_fn=None) -> list:
             try:
                 d_i = _date.fromisoformat(item_i.get("date", ""))
                 d_j = _date.fromisoformat(item_j.get("date", ""))
-                if abs((d_i - d_j).days) > 3:
+                if abs((d_i - d_j).days) > date_window_days:
                     continue
             except ValueError:
                 continue
-            title_j = (item_j.get("title_zh") or item_j.get("title") or "").strip()
-            if _title_bigram_sim(title_i, title_j) > 0.80:
+
+            # ① 中文标题 bigram 相似度（原有逻辑，阈值从 0.80 → 0.55）
+            title_j_zh = (item_j.get("title_zh") or item_j.get("title") or "").strip()
+            if _title_bigram_sim(title_i_zh, title_j_zh) > 0.55:
+                duplicates.append(j)
+                continue
+
+            # ② 英文原标题事件指纹精确规则（识别"同一法案不同措辞"的报道）
+            if _same_event_by_fingerprint(fps[i], fps[j]):
                 duplicates.append(j)
 
         if duplicates:
             group_idxs = [i] + duplicates
-            # 日期最新的优先；相同日期取 id 最小（最早入库）
+            # 日期最新优先；相同日期取 id 最小（最早入库，通常是原始报道）
             group_idxs.sort(
                 key=lambda x: (items[x].get("date", ""), -(items[x].get("id") or 0)),
                 reverse=True,
@@ -176,9 +273,8 @@ def _deduplicate_report_items(items: list, merge_fn=None) -> list:
 
             if loser_count > 0:
                 title_zh = (items[winner_idx].get("title_zh") or "").strip()
-                # 收集所有集群成员的摘要（去空后去重）
                 cluster_summaries = []
-                seen_s = set()
+                seen_s: set = set()
                 for idx in group_idxs:
                     s = (items[idx].get("summary_zh") or items[idx].get("summary") or "").strip()
                     if s and s not in seen_s:
@@ -203,7 +299,7 @@ def _deduplicate_report_items(items: list, merge_fn=None) -> list:
     result = [item for i, item in enumerate(items) if i not in dropped]
     if len(items) != len(result):
         logger.info(
-            f"[报告去重] {len(items)} 条 → {len(result)} 条"
+            f"[报告去重] 事件聚类：{len(items)} 条 → {len(result)} 条"
             f"（合并 {len(items) - len(result)} 条跨来源同主题报道）"
         )
     return result
@@ -211,25 +307,67 @@ def _deduplicate_report_items(items: list, merge_fn=None) -> list:
 
 # ─── 报告条目截断（主报告 + 附录）────────────────────────────────────────
 
-MAIN_REPORT_LIMIT = 40  # 主报告最多保留条数（按 impact_score 从高到低）
+MAIN_REPORT_LIMIT = 30   # 主报告最多保留条数
+MAX_PER_REGION    = 5    # 每个显示分组最多入选条数（防止单一地区刷屏）
 
 
 def _split_main_appendix(items: list) -> tuple:
     """
-    按 impact_score 降序排序，切分为主报告（≤40条）和附录（其余）。
-    返回 (main_items, appendix_items)。
+    漏斗最终截断：按 impact_score 降序，同时满足：
+      1. 总数 ≤ MAIN_REPORT_LIMIT (30)
+      2. 每个显示分组（欧洲/北美/亚太…）≤ MAX_PER_REGION (5)
+
+    算法：
+      Pass-1: 遍历全局排序列表，每条目若所在分组未达上限则入选主报告。
+      Pass-2: 若主报告不足 30 条（因分组均衡导致空位），从剩余中补充（不限分组）。
+      主报告最终按 impact_score 重排供渲染。
     """
     sorted_items = sorted(
         items,
         key=lambda x: (int(x.get("impact_score", 1)), x.get("date", "")),
         reverse=True,
     )
-    main = sorted_items[:MAIN_REPORT_LIMIT]
-    appendix = sorted_items[MAIN_REPORT_LIMIT:]
+
+    region_counts: dict = {}
+    main: list = []
+    reserve: list = []   # 未入选，按 impact_score 降序
+
+    # Pass-1：按分组均衡入选（硬上限 MAX_PER_REGION）
+    for item in sorted_items:
+        rg = _get_region_group(item.get("region", "其他"))
+        if len(main) < MAIN_REPORT_LIMIT and region_counts.get(rg, 0) < MAX_PER_REGION:
+            main.append(item)
+            region_counts[rg] = region_counts.get(rg, 0) + 1
+        else:
+            reserve.append(item)
+
+    # Pass-2：若主报告不满 30，用宽松上限（MAX_PER_REGION + 2 = 7）从剩余补充
+    # 仍逐个检查分组计数，防止单一地区垄断
+    RELAXED_CAP = MAX_PER_REGION + 2
+    if len(main) < MAIN_REPORT_LIMIT and reserve:
+        new_reserve = []
+        for item in reserve:
+            rg = _get_region_group(item.get("region", "其他"))
+            if len(main) < MAIN_REPORT_LIMIT and region_counts.get(rg, 0) < RELAXED_CAP:
+                main.append(item)
+                region_counts[rg] = region_counts.get(rg, 0) + 1
+            else:
+                new_reserve.append(item)
+        reserve = new_reserve
+
+    appendix = reserve
+    main.sort(
+        key=lambda x: (int(x.get("impact_score", 1)), x.get("date", "")),
+        reverse=True,
+    )
+
     if appendix:
+        region_summary = ", ".join(
+            f"{rg}:{cnt}" for rg, cnt in sorted(region_counts.items())
+        )
         logger.info(
-            f"[截断] 主报告 {len(main)} 条（impact_score 最高），"
-            f"附录 {len(appendix)} 条"
+            f"[截断] 主报告 {len(main)} 条（≤{MAX_PER_REGION}/地区·总限{MAIN_REPORT_LIMIT}）"
+            f"，附录 {len(appendix)} 条 | 分组：{region_summary}"
         )
     return main, appendix
 
