@@ -1,28 +1,31 @@
 # 全球互联网内容平台合规动态监控
 
-> 面向互联网内容平台（视频 / 直播 / UGC / 社交）合规团队的自动化法规情报工具，持续追踪全球主要市场在内容安全、未成年保护、数据隐私、版权、支付合规、商业化等核心领域的监管动态。
+> 面向出海互联网内容平台（视频 / 直播 / UGC / 社交）合规团队的自动化法规情报工具，持续追踪全球主要市场在数据隐私、AI 合规、内容安全、未成年人保护、平台竞争等核心领域的监管动态。
 
 ---
 
 ## 功能概览
 
-- **自动抓取**：覆盖 FTC、UK Gov、EFF、GDPR.eu、TechCrunch、The Verge 等 RSS 源；同时通过 Google News 多语言搜索（英、日、韩、越、印尼、德、法、葡、西、泰、阿拉伯语等 20+ 语种）获取本地语种监管动态
-- **AI 深度分析**：基于硅基流动 Qwen3-8B 批量处理，每条动态生成规范中文标题、30-50 字摘要、120-200 字正文分析（含背景 / 监管细节 / 影响 / 走向）以及 1-2 句合规提示
-- **智能分类**：按地区（东南亚 / 亚太 / 欧洲 / 北美 / 日韩台 等）和合规类别（数据隐私 / AI 合规 / 平台与竞争合规 / 未成年人保护 等 9 大类）自动归类
-- **三重去重**：URL 精确匹配 → Bigram 语义相似度（阈值 0.45）→ LLM 批量核验，有效过滤跨来源的同主题重复报道
-- **交互式 HTML 报告**：支持按地区、分类、状态筛选和关键词搜索；区域内按时间倒序排列；点击条目可展开正文分析和合规提示
-- **PDF 报告**：每月自动生成 PDF 版本，方便分发存档
+- **自动抓取**：覆盖 FTC、UK Gov、EFF、GDPR.eu、TechCrunch 等 RSS 源；同时通过 Google News 多语言搜索（英、日、韩、越、印尼、德、法、葡、西、泰、阿拉伯语等 20+ 语种）获取本地监管动态
+- **漏斗过滤**：关键词预评分（罚款 / 禁令 / 制裁 / 生效等高影响词）× 立法阶段权重 × 信源层级，过滤低信噪比条目后再送 LLM 处理
+- **AI 深度分析**：基于硅基流动 Qwen3-8B，每条动态生成规范中文标题、30-50 字摘要、120-200 字正文分析（含背景 / 监管细节 / 影响评估 / 走向判断）以及 1-2 句合规提示
+- **智能分类**：按 8 大地区显示分组（东南亚 / 东亚 / 南亚·大洋洲 / 中东 / 欧洲 / 北美 / 南美 / 其他）和 9 大合规类别自动归类
+- **多层去重**：URL 精确匹配 → Bigram 语义相似度 → 事件指纹聚类（同法案不同报道识别）→ LLM 批量核验
+- **深度聚类**：同地区、同法案的草案 → 生效 → 执法等多阶段动态自动合并为进展时间线
+- **月报截断**：Top 30 主报告（每地区最多 5 条），其余进入附录，防止单一地区主导报告
+- **交互式 HTML 报告**：支持按地区、分类、状态筛选和关键词搜索；点击条目展开正文分析与合规提示
+- **PDF 月报**：Playwright 渲染，每月 1 日自动生成并归档
 
 ---
 
 ## 自动化调度
 
-| 任务 | 触发时间（北京 / 新加坡时间） | 说明 |
-|------|------------------------------|------|
+| 任务 | 触发时间（北京/新加坡时间） | 说明 |
+|------|---------------------------|------|
 | 每日数据更新 | 周一至周五 09:33 | 增量抓取 + AI 翻译分析，写入数据库 |
-| 月报生成 | 每月 1 日 09:47 | 抓取最新数据，生成 HTML + PDF 月报并提交归档 |
+| 月报生成 | 每月 1 日 09:47 | 全量抓取，生成上月 HTML + PDF 月报并提交归档 |
 
-> **注意**：GitHub 对超过 60 天未有代码提交的仓库会自动暂停 Actions 计划任务。如遇停止，进入 Actions 页面重新启用即可。
+> GitHub 对 60 天无代码提交的仓库会自动暂停 Actions。如遇停止，进入 Actions 页面重新启用即可。
 
 ---
 
@@ -31,12 +34,12 @@
 | 显示分组 | 涵盖地区 | 代表监管来源 |
 |----------|----------|-------------|
 | 东南亚 | 越南、印尼、泰国、菲律宾、马来西亚、新加坡 | 越南信息通信部、印尼 Kominfo、泰国 PDPA、新加坡 IMDA |
-| 亚太 | 印度、巴基斯坦、孟加拉国、澳大利亚、新西兰 | 印度 MeitY / DPDPA、澳大利亚 eSafety、OAIC |
-| 欧洲 | 欧盟、英国、德国、法国、荷兰、西班牙等 | GDPR / EDPB 执法、ICO、CNIL、CMA、Ofcom、DSA / DMA |
-| 北美 | 美国、加拿大 | FTC、联邦公报、CCPA / CPRA、COPPA 执法、加拿大 PIPEDA |
-| 南美 | 巴西、墨西哥、阿根廷等 | LGPD / ANPD（巴西）、SENACON |
-| 日韩台 | 日本、韩国、台湾、香港、澳门 | 日本个人信息保护委员会、韩国 KISA、台湾数位部 |
+| 东亚 | 日本、韩国、台湾、香港、澳门 | 日本个人信息保护委员会、韩国 KISA / KCA、台湾数位部 |
+| 南亚/大洋洲 | 印度、巴基斯坦、孟加拉国、澳大利亚、新西兰 | 印度 MeitY / DPDPA、澳大利亚 eSafety、OAIC |
 | 中东 | 沙特、阿联酋、土耳其、尼日利亚、南非 | 沙特通信部、土耳其 KVKK、南非 POPIA |
+| 欧洲 | 欧盟、英国、德国、法国、荷兰等 | GDPR / EDPB、ICO、CNIL、CMA、Ofcom、DSA / DMA |
+| 北美 | 美国、加拿大 | FTC、联邦公报、CCPA / CPRA、COPPA、加拿大 PIPEDA |
+| 南美 | 巴西、墨西哥、阿根廷等 | LGPD / ANPD（巴西）、SENACON |
 | 其他 | 全球综合 | EFF Deeplinks、TechCrunch、The Verge |
 
 ---
@@ -46,12 +49,12 @@
 | 分类 | 典型议题 |
 |------|----------|
 | 数据隐私 | GDPR / CCPA 执法、跨境数据传输、数据本地化、Cookie 合规、数据泄露通报 |
-| AI 合规 | EU AI Act 实施、AI 训练数据版权、生成式 AI 治理、深度伪造监管、LLM 责任 |
+| AI 合规 | EU AI Act 实施、AI 训练数据版权、生成式 AI 治理、深度伪造监管 |
 | 未成年人保护 | 年龄验证、社交媒体禁令、COPPA / KOSA 执法、家长控制、未成年人数据收集 |
 | 平台与竞争合规 | DSA / DMA 执法、App Store 反垄断、第三方支付开放、平台透明度义务 |
 | 广告营销合规 | 虚假广告、KOL 披露义务、暗黑模式、定向广告限制 |
-| 消费者保护 | 订阅自动续费、退款政策、随机付费机制（Loot Box / Gacha）披露、消费者权益诉讼 |
-| 知识产权 | AI 训练数据版权诉讼、平台版权责任、内容抓取法律边界、流媒体版权 |
+| 消费者保护 | 订阅自动续费、退款政策、Loot Box / Gacha 披露、消费者权益诉讼 |
+| 知识产权 | AI 训练数据版权诉讼、平台版权责任、内容抓取法律边界 |
 | 内容监管 | 违法内容下架义务、仇恨言论监管、虚假信息治理、内容分级 |
 | 经营合规 | 本地代理 / 代表处要求、数字服务税、平台注册许可、外资限制 |
 
@@ -62,13 +65,13 @@
 ```
 Monitor-v2/
 ├── monitor.py          # 主入口：run / report / query / stats / retranslate
-├── fetcher.py          # RSS + Google News 多语言抓取，过滤写入 DB
+├── fetcher.py          # RSS + Google News 多语言抓取、漏斗预评分、写入 DB
 ├── classifier.py       # 分类打标（地区 / 类别 / 状态 / 影响分值 / 信源层级）
-├── translator.py       # AI 批量翻译 + 正文分析 + 合规提示生成 + 去重核验
-├── reporter.py         # HTML 报告生成（交互筛选、展开正文、三重去重）
+├── translator.py       # AI 批量翻译、正文分析、合规提示生成、LLM 去重核验
+├── reporter.py         # HTML 月报生成（交互筛选、展开正文、多层去重）
 ├── models.py           # 数据模型（LegislationItem）+ SQLite 数据库操作
 ├── config.py           # 搜索关键词库、RSS 源、分类标签、输出配置
-├── utils.py            # 共享工具：区域分组映射
+├── utils.py            # 共享工具：区域分组映射、bigram 相似度、状态标准化
 ├── generate_pdf.py     # Playwright 截图：HTML 报告 → PDF
 ├── requirements.txt    # Python 依赖
 ├── data/
@@ -76,9 +79,9 @@ Monitor-v2/
 ├── reports/
 │   ├── latest.html     # 最新 HTML 交互月报
 │   ├── latest.pdf      # 最新 PDF 月报
-│   └── archive/        # 历史月报存档（YYYY-MM/monthly.html）
+│   └── monthly_*.html  # 历史月报存档
 ├── assets/
-│   └── logo.png        # 品牌 Logo（替换此文件即可更换报告头部图标）
+│   └── logo.png        # 报告头部图标（替换此文件即可更换）
 └── .github/workflows/
     ├── daily_check.yml     # 每日数据抓取 workflow（周一至周五）
     └── weekly_report.yml   # 月报生成 workflow（每月 1 日）
@@ -99,9 +102,9 @@ cd Monitor-v2
 
 进入仓库 **Settings → Secrets and variables → Actions → New repository secret**，添加：
 
-| Secret 名称 | 说明 | 是否必填 |
-|-------------|------|---------|
-| `LLM_API_KEY` | 硅基流动 API Key（[免费申请](https://cloud.siliconflow.cn)） | 必填 |
+| Secret 名称 | 说明 |
+|-------------|------|
+| `LLM_API_KEY` | 硅基流动 API Key（[免费申请](https://cloud.siliconflow.cn)） |
 
 ### 3. 启用 GitHub Actions
 
@@ -123,7 +126,7 @@ playwright install chromium      # 仅 PDF 生成需要
 # 设置环境变量
 export LLM_API_KEY=sk-xxx
 
-# 抓取数据并生成月报
+# 抓取数据并生成月报（推荐）
 python3 monitor.py run --period month
 
 # 仅从数据库生成报告（不重新抓取）
@@ -160,13 +163,12 @@ python3 monitor.py retranslate
 |------|------|
 | [`reports/latest.html`](reports/latest.html) | 最新 HTML 交互月报 |
 | [`reports/latest.pdf`](reports/latest.pdf) | 最新 PDF 月报 |
-| [`reports/archive/`](reports/archive/) | 历史月报存档（按年月归档） |
 
-HTML 报告可通过 htmlpreview.github.io 在线预览：
+HTML 报告在线预览：
 
 **[点击查看最新月报](https://htmlpreview.github.io/?https://raw.githubusercontent.com/evonotevil/Monitor-v2/main/reports/latest.html)**
 
-PDF 版本直接下载：
+PDF 直接下载：
 
 **[下载最新月报 PDF](https://github.com/evonotevil/Monitor-v2/raw/main/reports/latest.pdf)**
 
@@ -174,12 +176,8 @@ PDF 版本直接下载：
 
 ## 技术说明
 
-- **LLM**：硅基流动 `Qwen/Qwen3-8B`，每批最多 3 条并行处理，批间 4 秒冷却（符合免费层限速）
-- **AI 输出字段**：每条动态生成 `title_zh`（标题）、`summary_zh`（摘要）、`detail_zh`（正文分析）、`compliance_note`（合规提示）；部分条目（Google Translate 回退 / 历史数据）仅有标题和摘要
+- **LLM**：硅基流动 `Qwen/Qwen3-8B`，每批最多 3 条并行，批间 4 秒冷却（符合免费层限速）
+- **去重管线**：Bigram Jaccard 相似度（阈值 0.55）+ 事件指纹（数字 + 实体词 + bigram token 组合）+ LLM 核验三层过滤
 - **数据库**：SQLite，存储在 `data/monitor.db`，每次 CI 运行后自动提交回仓库
-- **PDF 生成**：Playwright Chromium（GitHub Actions 已配置缓存，命中时安装时间从 90 秒降至 5 秒）
+- **PDF 生成**：Playwright Chromium（GitHub Actions 已配置缓存，命中时安装时间 < 10 秒）
 - **Git 优化**：所有 workflow 使用 `fetch-depth: 1` 浅克隆，避免拉取含完整 DB 历史的大体积仓库
-
----
-
-*Bilibili Legal · 仅供内部参考*
