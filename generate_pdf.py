@@ -26,7 +26,9 @@ REPORTS_DIR = Path(__file__).parent / "reports"
 
 def find_latest_html() -> Path:
     candidates = sorted(
-        list(REPORTS_DIR.glob("report_*.html")) + list(REPORTS_DIR.glob("weekly_*.html")),
+        list(REPORTS_DIR.glob("report_*.html"))
+        + list(REPORTS_DIR.glob("weekly_*.html"))
+        + list(REPORTS_DIR.glob("monthly_*.html")),
         key=os.path.getmtime,
         reverse=True,
     )
