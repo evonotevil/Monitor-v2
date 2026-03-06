@@ -121,6 +121,70 @@ def _deduplicate_items(items):
     return result
 
 
+def _deduplicate_report_items(items: list) -> list:
+    """
+    对从 DB 查出的已翻译条目做跨来源去重。
+
+    逻辑：同一「显示分组」内，title_zh bigram 相似度 >0.50 且日期差 ≤3 天
+    的条目视为同一事件的不同来源报道，只保留来源权威性最高的那条
+    （impact_score 最高；相同则取 DB id 最小的，即最早入库的）。
+
+    与 _deduplicate_items 的区别：
+    - 作用对象：DB 查询返回的 dict 列表（已含 title_zh）
+    - 比对字段：title_zh（LLM 标准化中文标题，比英文原标题更利于跨源比对）
+    - 阈值：0.50（比英文标题的 0.65 宽松，因中文标准化后相似度本就更高）
+    - 日期窗口：3 天（英文原标题去重用 2 天）
+    """
+    from datetime import date as _date
+    dropped: set[int] = set()
+
+    for i, item_i in enumerate(items):
+        if i in dropped:
+            continue
+        group_i = _get_region_group(item_i.get("region", ""))
+        title_i = (item_i.get("title_zh") or item_i.get("title") or "").strip()
+        if not title_i:
+            continue
+
+        duplicates = []
+        for j, item_j in enumerate(items):
+            if j <= i or j in dropped:
+                continue
+            if group_i != _get_region_group(item_j.get("region", "")):
+                continue
+            try:
+                d_i = _date.fromisoformat(item_i.get("date", ""))
+                d_j = _date.fromisoformat(item_j.get("date", ""))
+                if abs((d_i - d_j).days) > 3:
+                    continue
+            except ValueError:
+                continue
+            title_j = (item_j.get("title_zh") or item_j.get("title") or "").strip()
+            if _title_bigram_sim(title_i, title_j) > 0.50:
+                duplicates.append(j)
+
+        if duplicates:
+            group_idxs = [i] + duplicates
+            # 按 impact_score 降序，相同则取 id 最小（最早入库 = 通常是更权威来源）
+            group_idxs.sort(
+                key=lambda x: (-items[x].get("impact_score", 1), items[x].get("id") or 999999)
+            )
+            winner_idx = group_idxs[0]
+            loser_count = len(group_idxs) - 1
+            for idx in group_idxs[1:]:
+                dropped.add(idx)
+            if loser_count > 0 and items[winner_idx].get("summary_zh"):
+                items[winner_idx]["summary_zh"] += f" [另有 {loser_count} 篇同主题报道]"
+
+    result = [item for i, item in enumerate(items) if i not in dropped]
+    if len(items) != len(result):
+        logger.info(
+            f"[报告去重] {len(items)} 条 → {len(result)} 条"
+            f"（合并 {len(items) - len(result)} 条跨来源同主题报道）"
+        )
+    return result
+
+
 def _period_label(period: str) -> str:
     labels = {"week": "周报（近7天）", "month": "月报（近30天）", "all": "全量报告"}
     return labels.get(period, "全量报告")
@@ -201,6 +265,7 @@ def cmd_run(args):
 
         all_items = db.query_items(days=days)
         if all_items:
+            all_items = _deduplicate_report_items(all_items)
             print_table(all_items)
 
             if args.output:
@@ -244,6 +309,7 @@ def cmd_report(args):
             print(f"数据库中暂无 [{label}] 匹配数据。请先运行 `python monitor.py run` 抓取数据。")
             return
 
+        items = _deduplicate_report_items(items)
         fmt = args.format.lower()
         if fmt == "table":
             print_table(items)

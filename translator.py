@@ -623,6 +623,7 @@ def _ai_process_batch(items_data: list) -> list:
         resp = _AI_CLIENT.chat.completions.create(
             model=_LLM_MODEL,
             max_tokens=800 * n,
+            timeout=60.0,          # 批量调用生成量大，给足 60s（客户端默认 25s 易超时）
             extra_body=_LLM_EXTRA_BODY,
             messages=[
                 {"role": "system", "content": _AI_SYSTEM},
